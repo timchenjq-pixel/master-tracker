@@ -5,51 +5,6 @@ from datetime import date, datetime, timedelta
 # --- Page Config ---
 st.set_page_config(page_title="Study Tracker", page_icon="📚", layout="centered")
 
-# --- Custom CSS to Force a Square, Clickable Box ---
-st.markdown("""
-    <style>
-    /* Remove the default Streamlit header */
-    header {display: none !important;}
-    #MainMenu {display: none !important;}
-    footer {display: none !important;}
-
-    /* THE FIX: Lock the invisible wrapper so it cannot stretch across the screen */
-    div[data-testid="stPopover"] {
-        position: fixed !important;
-        top: 20px !important;
-        right: 20px !important;
-        z-index: 999999 !important;
-        width: 80px !important;  
-        height: 80px !important; 
-    }
-    
-    /* Style the actual button to fill that 80x80 wrapper perfectly */
-    div[data-testid="stPopover"] > button {
-        border: 3px solid #4CAF50 !important;
-        border-radius: 16px !important; 
-        background-color: white !important;
-        color: #4CAF50 !important;
-        width: 100% !important;  
-        height: 100% !important; 
-        font-size: 30px !important; 
-        padding: 0px !important;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        margin: 0 !important;
-    }
-
-    /* Lock the width of the dropdown menu so it opens neatly below */
-    div[data-testid="stPopoverBody"] {
-        width: 320px !important;
-        max-width: 90vw !important;
-        right: 0px !important;
-        left: auto !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
 # --- Core Data Setup ---
 SUBJECTS = [
     "Chinese", "English", "Math", "History", 
@@ -101,4 +56,52 @@ if st.session_state.timer_active:
                 unsafe_allow_html=True
             )
             time.sleep(1)
-        timer_display.
+        timer_display.empty()
+        
+    sub = st.session_state.timer_subject
+    t_type = st.session_state.timer_type
+    has_completed_today = (st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)
+    
+    if t_type == "full":
+        st.session_state.full_sessions[sub] += 1
+    else:
+        st.session_state.half_sessions[sub] += 1
+        
+    if not has_completed_today and ((st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)):
+        st.session_state.streaks[sub] += 1
+        st.session_state.last_studied_date[sub] = today
+        
+    st.session_state.timer_active = False
+    st.rerun()
+
+# --- Main UI Menu ---
+if not st.session_state.timer_active:
+    st.title("📚 Express Track Dashboard")
+    st.write("Click any subject box below to open your timers.")
+    
+    for sub in SUBJECTS:
+        has_completed_today = (st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)
+        status_emoji = "✅" if has_completed_today else "⏳"
+        streak_val = st.session_state.streaks[sub]
+        
+        # Native Streamlit expander boxes - perfectly safe and bug-free
+        with st.expander(f"{status_emoji} {sub} (Streak: {streak_val}d)"):
+            st.checkbox("Completed for today", value=has_completed_today, disabled=True, key=f"status_{sub}")
+            st.write(f"Progress: Full ({st.session_state.full_sessions[sub]}/1) | Half ({st.session_state.half_sessions[sub]}/2)")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("⏱️ Full (15m)", key=f"full_{sub}", use_container_width=True):
+                    st.session_state.timer_active = True
+                    st.session_state.timer_end_time = datetime.now() + timedelta(minutes=15)
+                    st.session_state.timer_subject = sub
+                    st.session_state.timer_type = "full"
+                    st.rerun() 
+                        
+            with col2:
+                if st.button("⚡ Half (5m)", key=f"half_{sub}", use_container_width=True):
+                    st.session_state.timer_active = True
+                    st.session_state.timer_end_time = datetime.now() + timedelta(minutes=5)
+                    st.session_state.timer_subject = sub
+                    st.session_state.timer_type = "half"
+                    st.rerun()
