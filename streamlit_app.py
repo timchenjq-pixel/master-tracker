@@ -364,3 +364,84 @@ if not st.session_state.timer_active:
             with btn2:
                 if st.button("Cancel", key="hw_add_cancel", use_container_width=True):
                     st.rerun()
+# 5. State Initialization: Habits
+if "wash_total" not in st.session_state: st.session_state.wash_total = 0
+if "sunblock_total" not in st.session_state: st.session_state.sunblock_total = 0
+if "wash_day_done" not in st.session_state: st.session_state.wash_day_done = False
+if "wash_night_done" not in st.session_state: st.session_state.wash_night_done = False
+if "sunblock_done" not in st.session_state: st.session_state.sunblock_done = False
+if "pack_bag_done" not in st.session_state: st.session_state.pack_bag_done = False
+if "habits_last_date" not in st.session_state: st.session_state.habits_last_date = None
+
+if "bible_chapters" not in st.session_state: st.session_state.bible_chapters = 0
+if "bible_verses" not in st.session_state: st.session_state.bible_verses = 0
+if "bible_days" not in st.session_state: st.session_state.bible_days = 0
+if "bible_last_date" not in st.session_state: st.session_state.bible_last_date = None
+# D. Habits Daily Reset
+if st.session_state.habits_last_date != today:
+    st.session_state.wash_day_done = False
+    st.session_state.wash_night_done = False
+    st.session_state.sunblock_done = False
+    st.session_state.pack_bag_done = False
+    st.session_state.habits_last_date = today
+    # BOX 4: ROUTINES (New!)
+    with col4:
+        with st.popover("🌅 Routines"):
+            
+            # --- WASH FACE ---
+            st.write("### 🧼 Wash Face")
+            st.write(f"**Total Washes:** {st.session_state.wash_total}")
+            st.write(f"**Sunblock Days:** {st.session_state.sunblock_total}")
+            
+            w_day = st.checkbox("Morning Wash", value=st.session_state.wash_day_done, disabled=st.session_state.wash_day_done)
+            if w_day and not st.session_state.wash_day_done:
+                st.session_state.wash_total += 1
+                st.session_state.wash_day_done = True
+                st.rerun()
+                
+            w_night = st.checkbox("Night Wash", value=st.session_state.wash_night_done, disabled=st.session_state.wash_night_done)
+            if w_night and not st.session_state.wash_night_done:
+                st.session_state.wash_total += 1
+                st.session_state.wash_night_done = True
+                st.rerun()
+                
+            s_block = st.checkbox("Put Sunblock Today", value=st.session_state.sunblock_done, disabled=st.session_state.sunblock_done)
+            if s_block and not st.session_state.sunblock_done:
+                st.session_state.sunblock_total += 1
+                st.session_state.sunblock_done = True
+                st.rerun()
+                
+            st.divider()
+            
+            # --- PACK BAG ---
+            st.write("### 🎒 Pack Bag")
+            p_bag = st.checkbox("Bag Packed", value=st.session_state.pack_bag_done, disabled=st.session_state.pack_bag_done)
+            if p_bag and not st.session_state.pack_bag_done:
+                st.session_state.pack_bag_done = True
+                st.rerun()
+                
+            st.divider()
+            
+            # --- BIBLE ---
+            st.write("### 📖 Bible")
+            st.write(f"**Days Read:** {st.session_state.bible_days} | **Ch:** {st.session_state.bible_chapters} | **V:** {st.session_state.bible_verses}")
+            
+            bible_done_today = (st.session_state.bible_last_date == today)
+            
+            if not bible_done_today:
+                st.write("What did you read today?")
+                b_col1, b_col2 = st.columns(2)
+                with b_col1:
+                    if st.button("1 Chapter", use_container_width=True):
+                        st.session_state.bible_chapters += 1
+                        st.session_state.bible_days += 1
+                        st.session_state.bible_last_date = today
+                        st.rerun()
+                with b_col2:
+                    if st.button("1 Verse", use_container_width=True):
+                        st.session_state.bible_verses += 1
+                        st.session_state.bible_days += 1
+                        st.session_state.bible_last_date = today
+                        st.rerun()
+            else:
+                st.success("✅ Completed for today!")
