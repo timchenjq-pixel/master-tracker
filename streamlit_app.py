@@ -19,7 +19,7 @@ for key in ["streaks", "half_sessions", "full_sessions"]:
 if "last_studied_date" not in st.session_state:
     st.session_state.last_studied_date = {sub: None for sub in SUBJECTS}
 
-# Timer Memory State (Prevents clicks from breaking the timer)
+# Timer Memory State
 if "timer_active" not in st.session_state:
     st.session_state.timer_active = False
 if "timer_end_time" not in st.session_state:
@@ -74,34 +74,34 @@ if st.session_state.timer_active:
     st.session_state.timer_active = False
     st.rerun()
 
-# --- Main UI Menu ---
+# --- Main UI Menu (JUST THE BOX) ---
 if not st.session_state.timer_active:
-    st.title("📚 Express Track Dashboard")
-    st.write("Click any subject box below to open your timers.")
     
-    for sub in SUBJECTS:
-        has_completed_today = (st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)
-        status_emoji = "✅" if has_completed_today else "⏳"
-        streak_val = st.session_state.streaks[sub]
+    # This creates the actual box you click to open everything
+    with st.popover("📚 Open Tracker"):
         
-        # Native Streamlit expander boxes - perfectly safe and bug-free
-        with st.expander(f"{status_emoji} {sub} (Streak: {streak_val}d)"):
-            st.checkbox("Completed for today", value=has_completed_today, disabled=True, key=f"status_{sub}")
-            st.write(f"Progress: Full ({st.session_state.full_sessions[sub]}/1) | Half ({st.session_state.half_sessions[sub]}/2)")
+        for sub in SUBJECTS:
+            has_completed_today = (st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)
+            status_emoji = "✅" if has_completed_today else "⏳"
+            streak_val = st.session_state.streaks[sub]
             
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("⏱️ Full (15m)", key=f"full_{sub}", use_container_width=True):
-                    st.session_state.timer_active = True
-                    st.session_state.timer_end_time = datetime.now() + timedelta(minutes=15)
-                    st.session_state.timer_subject = sub
-                    st.session_state.timer_type = "full"
-                    st.rerun() 
-                        
-            with col2:
-                if st.button("⚡ Half (5m)", key=f"half_{sub}", use_container_width=True):
-                    st.session_state.timer_active = True
-                    st.session_state.timer_end_time = datetime.now() + timedelta(minutes=5)
-                    st.session_state.timer_subject = sub
-                    st.session_state.timer_type = "half"
-                    st.rerun()
+            with st.expander(f"{status_emoji} {sub} (Streak: {streak_val}d)"):
+                st.checkbox("Completed for today", value=has_completed_today, disabled=True, key=f"status_{sub}")
+                st.write(f"Progress: Full ({st.session_state.full_sessions[sub]}/1) | Half ({st.session_state.half_sessions[sub]}/2)")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("⏱️ Full (15m)", key=f"full_{sub}", use_container_width=True):
+                        st.session_state.timer_active = True
+                        st.session_state.timer_end_time = datetime.now() + timedelta(minutes=15)
+                        st.session_state.timer_subject = sub
+                        st.session_state.timer_type = "full"
+                        st.rerun() 
+                            
+                with col2:
+                    if st.button("⚡ Half (5m)", key=f"half_{sub}", use_container_width=True):
+                        st.session_state.timer_active = True
+                        st.session_state.timer_end_time = datetime.now() + timedelta(minutes=5)
+                        st.session_state.timer_subject = sub
+                        st.session_state.timer_type = "half"
+                        st.rerun()
