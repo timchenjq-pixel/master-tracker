@@ -430,11 +430,13 @@ if not st.session_state.timer_active:
                 if st.button("Cancel", key="hw_add_cancel2", use_container_width=True):
                     st.rerun()
 
-# --- Hide Streamlit Branding ---
+# --- HIDE STREAMLIT BRANDING ---
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
+    div[data-testid="stToolbar"] {visibility: hidden;}
+    div[data-testid="stDecoration"] {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
