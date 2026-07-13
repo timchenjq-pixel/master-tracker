@@ -11,7 +11,7 @@ SUBJECTS = [
     "Literature", "Geography", "Life Science", "Physical Science"
 ]
 
-# State Initialization: Subjects
+# 1. State Initialization: Subjects
 for key in ["streaks", "half_sessions", "full_sessions"]:
     if key not in st.session_state:
         st.session_state[key] = {sub: 0 for sub in SUBJECTS}
@@ -19,47 +19,53 @@ for key in ["streaks", "half_sessions", "full_sessions"]:
 if "last_studied_date" not in st.session_state:
     st.session_state.last_studied_date = {sub: None for sub in SUBJECTS}
 
-# State Initialization: Japanese Box
-if "jp_streak" not in st.session_state:
-    st.session_state.jp_streak = 0
-if "jp_tasks" not in st.session_state:
-    st.session_state.jp_tasks = {"Duolingo": False, "Jgrammar": False, "Kanji Dojo": False}
-if "jp_completed_today" not in st.session_state:
-    st.session_state.jp_completed_today = False
-if "jp_last_date" not in st.session_state:
-    st.session_state.jp_last_date = None
+# 2. State Initialization: Japanese Box
+if "jp_streak" not in st.session_state: st.session_state.jp_streak = 0
+if "jp_tasks" not in st.session_state: st.session_state.jp_tasks = {"Duolingo": False, "Jgrammar": False, "Kanji Dojo": False}
+if "jp_completed_today" not in st.session_state: st.session_state.jp_completed_today = False
+if "jp_last_date" not in st.session_state: st.session_state.jp_last_date = None
 
-# Timer Memory State
-if "timer_active" not in st.session_state:
-    st.session_state.timer_active = False
-if "timer_end_time" not in st.session_state:
-    st.session_state.timer_end_time = None
-if "timer_subject" not in st.session_state:
-    st.session_state.timer_subject = None
-if "timer_type" not in st.session_state:
-    st.session_state.timer_type = None
+# 3. State Initialization: Activities (Piano & Workout)
+if "piano_count" not in st.session_state: st.session_state.piano_count = 0
+if "piano_last_date" not in st.session_state: st.session_state.piano_last_date = None
+if "piano_week" not in st.session_state: st.session_state.piano_week = date.today().isocalendar()[1] # Tracks the current week number
+
+if "workout_total" not in st.session_state: st.session_state.workout_total = 0
+if "workout_last_date" not in st.session_state: st.session_state.workout_last_date = None
+
+# 4. Timer Memory State
+if "timer_active" not in st.session_state: st.session_state.timer_active = False
+if "timer_end_time" not in st.session_state: st.session_state.timer_end_time = None
+if "timer_subject" not in st.session_state: st.session_state.timer_subject = None
+if "timer_type" not in st.session_state: st.session_state.timer_type = None
 
 today = date.today()
 
-# --- Streak Decay Logic ---
-# Normal Subjects
+# --- Background Logic Updates ---
+
+# A. Subject Streak Decay
 for sub in SUBJECTS:
     last_date = st.session_state.last_studied_date[sub]
     if last_date is not None:
-        days_passed = (today - last_date).days
-        if days_passed > 2:  
+        if (today - last_date).days > 2:  
             st.session_state.streaks[sub] = 0
             st.session_state.half_sessions[sub] = 0
             st.session_state.full_sessions[sub] = 0
             st.session_state.last_studied_date[sub] = None
 
-# Japanese Streak Decay (Miss 2 days = Streak dies)
+# B. Japanese Streak Decay
 if st.session_state.jp_last_date is not None:
     if (today - st.session_state.jp_last_date).days > 2:
         st.session_state.jp_streak = 0
         st.session_state.jp_tasks = {"Duolingo": False, "Jgrammar": False, "Kanji Dojo": False}
         st.session_state.jp_completed_today = False
         st.session_state.jp_last_date = None
+
+# C. Piano Weekly Reset Logic
+current_week = today.isocalendar()[1]
+if st.session_state.piano_week != current_week:
+    st.session_state.piano_week = current_week
+    st.session_state.piano_count = 0 # Resets back to 0 at the start of a new week
 
 # --- Active Timer Display Logic ---
 if st.session_state.timer_active:
@@ -96,11 +102,12 @@ if st.session_state.timer_active:
 # --- Main UI Menu ---
 if not st.session_state.timer_active:
     
-    # Place the boxes side-by-side to keep the screen clean
-    col1, col2 = st.columns(2)
+    # We now have 3 columns for our 3 main boxes!
+    col1, col2, col3 = st.columns(3)
     
+    # BOX 1: MAIN SUBJECTS
     with col1:
-        with st.popover("📚 Open Tracker"):
+        with st.popover("📚 Tracker"):
             for sub in SUBJECTS:
                 has_completed_today = (st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)
                 status_emoji = "✅" if has_completed_today else "⏳"
@@ -127,28 +134,60 @@ if not st.session_state.timer_active:
                             st.session_state.timer_type = "half"
                             st.rerun()
 
+    # BOX 2: JAPANESE
     with col2:
-        # Changes appearance automatically upon completion
-        jp_label = "✅ Japanese (Complete)" if st.session_state.jp_completed_today else "🎌 Japanese"
-        
+        jp_label = "✅ Japanese (Done)" if st.session_state.jp_completed_today else "🎌 Japanese"
         with st.popover(jp_label):
             st.write(f"**Current Streak: {st.session_state.jp_streak} days**")
             
-            # The manual checkboxes
             duo = st.checkbox("Duolingo", value=st.session_state.jp_tasks["Duolingo"], disabled=st.session_state.jp_completed_today)
             jgram = st.checkbox("Jgrammar", value=st.session_state.jp_tasks["Jgrammar"], disabled=st.session_state.jp_completed_today)
             kanji = st.checkbox("Kanji Dojo", value=st.session_state.jp_tasks["Kanji Dojo"], disabled=st.session_state.jp_completed_today)
 
-            # Auto-complete and exit logic
             if not st.session_state.jp_completed_today:
                 if duo and jgram and kanji:
                     st.session_state.jp_completed_today = True
                     st.session_state.jp_streak += 1
                     st.session_state.jp_last_date = today
                     st.session_state.jp_tasks = {"Duolingo": True, "Jgrammar": True, "Kanji Dojo": True}
-                    st.rerun() # Automatically kicks you out of the menu!
+                    st.rerun() 
                 else:
-                    # Save progress if they only tick 1 or 2 boxes
                     st.session_state.jp_tasks["Duolingo"] = duo
                     st.session_state.jp_tasks["Jgrammar"] = jgram
                     st.session_state.jp_tasks["Kanji Dojo"] = kanji
+
+    # BOX 3: ACTIVITIES (New!)
+    with col3:
+        with st.popover("💪 Activities"):
+            
+            # --- PIANO SECTION ---
+            st.write("### 🎹 Piano")
+            piano_done_today = (st.session_state.piano_last_date == today)
+            st.write(f"**Weekly Progress:** {st.session_state.piano_count} / 4 days")
+            
+            p_tick = st.checkbox("Practice Complete", value=piano_done_today, disabled=piano_done_today)
+            if p_tick and not piano_done_today:
+                st.session_state.piano_count += 1
+                st.session_state.piano_last_date = today
+                st.rerun()
+                
+            st.divider()
+            
+            # --- WORKOUT SECTION ---
+            st.write("### 🏋️ Workout")
+            st.write(f"**Total Lifetime Days:** {st.session_state.workout_total}")
+            
+            workout_done_today = (st.session_state.workout_last_date == today)
+            days_since_workout = (today - st.session_state.workout_last_date).days if st.session_state.workout_last_date else 999
+            
+            # Disable checkbox if ticked today, OR if ticked yesterday (1 day ago)
+            workout_disabled = workout_done_today or (days_since_workout == 1)
+            
+            if days_since_workout == 1 and not workout_done_today:
+                st.caption("⏳ Rest Day! Checkbox will unlock tomorrow.")
+                
+            w_tick = st.checkbox("Workout Complete", value=workout_done_today, disabled=workout_disabled)
+            if w_tick and not workout_done_today:
+                st.session_state.workout_total += 1
+                st.session_state.workout_last_date = today
+                st.rerun()
