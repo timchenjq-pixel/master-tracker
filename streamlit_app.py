@@ -8,33 +8,36 @@ st.set_page_config(page_title="Study Tracker", page_icon="📚", layout="centere
 # --- Custom CSS to Force a Square, Clickable Box ---
 st.markdown("""
     <style>
-    /* Completely remove the invisible Streamlit header that was blocking your clicks! */
+    /* Remove the default Streamlit header */
     header {display: none !important;}
     #MainMenu {display: none !important;}
     footer {display: none !important;}
 
-    /* Float the popover wrapper to the top right */
+    /* THE FIX: Lock the invisible wrapper so it cannot stretch across the screen */
     div[data-testid="stPopover"] {
         position: fixed !important;
         top: 20px !important;
         right: 20px !important;
         z-index: 999999 !important;
+        width: 80px !important;  
+        height: 80px !important; 
     }
     
-    /* Make the button a perfect, larger square (approx 1/10 of mobile screen) */
+    /* Style the actual button to fill that 80x80 wrapper perfectly */
     div[data-testid="stPopover"] > button {
         border: 3px solid #4CAF50 !important;
-        border-radius: 16px !important; /* Slightly rounded corners for a premium feel */
+        border-radius: 16px !important; 
         background-color: white !important;
         color: #4CAF50 !important;
-        width: 80px !important;  /* Forces exact square width */
-        height: 80px !important; /* Forces exact square height */
-        font-size: 30px !important; /* Makes the icon bigger */
+        width: 100% !important;  
+        height: 100% !important; 
+        font-size: 30px !important; 
         padding: 0px !important;
         box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
+        margin: 0 !important;
     }
 
     /* Lock the width of the dropdown menu so it opens neatly below */
@@ -98,50 +101,4 @@ if st.session_state.timer_active:
                 unsafe_allow_html=True
             )
             time.sleep(1)
-        timer_display.empty()
-        
-    sub = st.session_state.timer_subject
-    t_type = st.session_state.timer_type
-    has_completed_today = (st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)
-    
-    if t_type == "full":
-        st.session_state.full_sessions[sub] += 1
-    else:
-        st.session_state.half_sessions[sub] += 1
-        
-    if not has_completed_today and ((st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)):
-        st.session_state.streaks[sub] += 1
-        st.session_state.last_studied_date[sub] = today
-        
-    st.session_state.timer_active = False
-    st.rerun()
-
-# --- The Floating UI Menu ---
-if not st.session_state.timer_active:
-    # Notice the text is now just a single book icon to fit the square!
-    with st.popover("📚"):
-        for sub in SUBJECTS:
-            has_completed_today = (st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)
-            status_emoji = "✅" if has_completed_today else "⏳"
-            streak_val = st.session_state.streaks[sub]
-            
-            with st.expander(f"{status_emoji} {sub} (Streak: {streak_val}d)"):
-                st.checkbox("Completed for today", value=has_completed_today, disabled=True, key=f"status_{sub}")
-                st.write(f"Progress: Full ({st.session_state.full_sessions[sub]}/1) | Half ({st.session_state.half_sessions[sub]}/2)")
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("⏱️ Full", key=f"full_{sub}", use_container_width=True):
-                        st.session_state.timer_active = True
-                        st.session_state.timer_end_time = datetime.now() + timedelta(minutes=15)
-                        st.session_state.timer_subject = sub
-                        st.session_state.timer_type = "full"
-                        st.rerun() 
-                            
-                with col2:
-                    if st.button("⚡ Half", key=f"half_{sub}", use_container_width=True):
-                        st.session_state.timer_active = True
-                        st.session_state.timer_end_time = datetime.now() + timedelta(minutes=5)
-                        st.session_state.timer_subject = sub
-                        st.session_state.timer_type = "half"
-                        st.rerun()
+        timer_display.
