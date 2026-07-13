@@ -1,96 +1,85 @@
 import streamlit as st
-from datetime import date, timedelta
+import time
+from datetime import date
 
-# --- SETUP & MEMORY ---
-# This keeps our data saved while we click around
-if 'subjects' not in st.session_state:
-    default_data = {"streak": 0.0, "last_date": None}
-    st.session_state.subjects = {
-        "Chinese": default_data.copy(),
-        "English": default_data.copy(),
-        "Math": default_data.copy(),
-        "History": default_data.copy(),
-        "Literature": default_data.copy(),
-        "Geography": default_data.copy(),
-        "Life science": default_data.copy(),
-        "Physical science": default_data.copy(),
-    }
+# --- Setup & Configuration ---
+# This forces the layout to be centered and narrow instead of wide!
+st.set_page_config(page_title="Tim's Dashboard", page_icon="📚", layout="centered")
 
-# This controls our timer screen
-if 'timer_active' not in st.session_state:
-    st.session_state.timer_active = False
-    st.session_state.current_subject = ""
-    st.session_state.timer_amount = 0 
-    st.session_state.streak_value = 0.0 
+# Custom CSS to make it look less boring and style the blocks
+st.markdown("""
+    <style>
+    .block-container { max-width: 600px; padding-top: 2rem; }
+    .stCheckbox { margin-bottom: -10px; }
+    </style>
+""", unsafe_allow_html=True)
 
-# --- MAIN APP LAYOUT ---
-st.title("Tim's Study Tracker")
+# List of subjects
+SUBJECTS = [
+    "Chinese", "English", "Math", "History", 
+    "Literature", "Geography", "Life Science", "Physical Science"
+]
 
-today = date.today()
+# Initialize Session States
+if "streaks" not in st.session_state:
+    st.session_state.streaks = {sub: 0 for sub in SUBJECTS}
+if "completed_today" not in st.session_state:
+    st.session_state.completed_today = {sub: False for sub in SUBJECTS}
 
-# If the timer is NOT running, show the main list
-if not st.session_state.timer_active:
-    st.subheader("Your Subjects")
+# --- Main UI ---
+st.title("⚡ Tim's Master Hub")
+st.caption("Express Track Edition • One block at a time.")
+st.write("---")
 
-    # Create a nice layout for each subject
-    for subject, data in st.session_state.subjects.items():
-        col1, col2, col3, col4 = st.columns([3, 2, 2, 2])
+# --- Timer Functions ---
+def run_timer(minutes):
+    if st.session_state.get("test_mode", False):
+        st.success("Test Mode: Timer bypassed!")
+        return True
+        
+    placeholder = st.empty()
+    total_seconds = minutes * 60
+    for i in range(total_seconds, -1, -1):
+        mins, secs = divmod(i, 60)
+        placeholder.metric("Time Remaining", f"{mins:02d}:{secs:02d}")
+        time.sleep(1)
+    placeholder.empty()
+    return True
 
+# --- Sidebar ---
+st.sidebar.header("Developer Settings")
+st.session_state.test_mode = st.sidebar.checkbox("Enable Test Mode")
+
+# --- Subject Display (Confined Boxes) ---
+for subject in SUBJECTS:
+    # Creating a neat drop-down container box for each subject
+    with st.expander(f"📘 {subject} — Streak: {st.session_state.streaks[subject]} days"):
+        
+        # Checkbox replaces the clunky "last studied" text
+        is_done = st.checkbox("Mark as completed for today", key=f"check_{subject}", value=st.session_state.completed_today[subject])
+        
+        if is_done and not st.session_state.completed_today[subject]:
+            st.session_state.streaks[subject] += 1
+            st.session_state.completed_today[subject] = True
+            st.rerun()
+        elif not is_done and st.session_state.completed_today[subject]:
+            st.session_state.streaks[subject] = max(0, st.session_state.streaks[subject] - 1)
+            st.session_state.completed_today[subject] = False
+            st.rerun()
+            
+        st.write("Or run a timed session:")
+        col1, col2 = st.columns(2)
         with col1:
-            st.write(f"**{subject}**")
-            st.write(f"Streak: {data['streak']} 🔥")
-
+            if st.button(f"⏱️ 15 Min", key=f"full_{subject}", use_container_width=True):
+                if run_timer(15):
+                    if not st.session_state.completed_today[subject]:
+                        st.session_state.streaks[subject] += 1
+                        st.session_state.completed_today[subject] = True
+                        st.rerun()
         with col2:
-            if st.button("15 Min (Full)", key=f"full_{subject}"):
-                st.session_state.timer_active = True
-                st.session_state.current_subject = subject
-                st.session_state.timer_amount = 15
-                st.session_state.streak_value = 1.0
-                st.rerun()
-
-        with col3:
-            if st.button("5 Min (Half)", key=f"half_{subject}"):
-                st.session_state.timer_active = True
-                st.session_state.current_subject = subject
-                st.session_state.timer_amount = 5
-                st.session_state.streak_value = 0.5
-                st.rerun()
-
-        with col4:
-            # Shows when it was last studied
-            last = data['last_date']
-            if last:
-                st.write(f"Last: {last.strftime('%b %d')}")
-            else:
-                st.write("Last: Never")
-
-        st.divider()
-
-# If the timer IS running, show the timer screen
-else:
-    subject = st.session_state.current_subject
-    minutes = st.session_state.timer_amount
-    st.header(f"Studying: {subject}")
-    st.write(f"Session length: {minutes} minutes")
-
-    # Manual button to claim points for testing purposes
-    if st.button("Finish Session & Claim Streak", type="primary"):
-        # 1. Check if we broke the streak (gap of more than 1 break day)
-        last_date = st.session_state.subjects[subject]['last_date']
-        if last_date:
-            days_passed = (today - last_date).days
-            # If gap is 3 days or more, streak is broken!
-            if days_passed > 2: 
-                st.session_state.subjects[subject]['streak'] = 0.0
-
-        # 2. Add the streak points and update date
-        st.session_state.subjects[subject]['streak'] += st.session_state.streak_value
-        st.session_state.subjects[subject]['last_date'] = today
-
-        # 3. Go back to main screen
-        st.session_state.timer_active = False
-        st.rerun()
-
-    if st.button("Cancel (Go Back)"):
-         st.session_state.timer_active = False
-         st.rerun()
+            if st.button(f"⚡ 5 Min", key=f"half_{subject}", use_container_width=True):
+                if run_timer(5):
+                    if not st.session_state.completed_today[subject]:
+                        st.session_state.streaks[subject] += 1
+                        st.session_state.completed_today[subject] = True
+                        st.rerun()
