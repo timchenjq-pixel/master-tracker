@@ -33,11 +33,26 @@ if "piano_week" not in st.session_state: st.session_state.piano_week = date.toda
 if "workout_total" not in st.session_state: st.session_state.workout_total = 0
 if "workout_last_date" not in st.session_state: st.session_state.workout_last_date = None
 
-# 4. State Initialization: Exams (New!)
-if "exams" not in st.session_state: 
-    st.session_state.exams = [] # Stores a list of dictionaries
+# 4. State Initialization: Lists
+if "exams" not in st.session_state: st.session_state.exams = []
+if "courseworks" not in st.session_state: st.session_state.courseworks = []
+if "homework" not in st.session_state: st.session_state.homework = []
 
-# 5. Timer Memory State
+# 5. State Initialization: Routines & Habits
+if "wash_total" not in st.session_state: st.session_state.wash_total = 0
+if "sunblock_total" not in st.session_state: st.session_state.sunblock_total = 0
+if "wash_day_done" not in st.session_state: st.session_state.wash_day_done = False
+if "wash_night_done" not in st.session_state: st.session_state.wash_night_done = False
+if "sunblock_done" not in st.session_state: st.session_state.sunblock_done = False
+if "pack_bag_done" not in st.session_state: st.session_state.pack_bag_done = False
+if "habits_last_date" not in st.session_state: st.session_state.habits_last_date = None
+
+if "bible_chapters" not in st.session_state: st.session_state.bible_chapters = 0
+if "bible_verses" not in st.session_state: st.session_state.bible_verses = 0
+if "bible_days" not in st.session_state: st.session_state.bible_days = 0
+if "bible_last_date" not in st.session_state: st.session_state.bible_last_date = None
+
+# 6. Timer Memory State
 if "timer_active" not in st.session_state: st.session_state.timer_active = False
 if "timer_end_time" not in st.session_state: st.session_state.timer_end_time = None
 if "timer_subject" not in st.session_state: st.session_state.timer_subject = None
@@ -70,6 +85,14 @@ current_week = today.isocalendar()[1]
 if st.session_state.piano_week != current_week:
     st.session_state.piano_week = current_week
     st.session_state.piano_count = 0 
+
+# D. Habits Daily Reset
+if st.session_state.habits_last_date != today:
+    st.session_state.wash_day_done = False
+    st.session_state.wash_night_done = False
+    st.session_state.sunblock_done = False
+    st.session_state.pack_bag_done = False
+    st.session_state.habits_last_date = today
 
 # --- Active Timer Display Logic ---
 if st.session_state.timer_active:
@@ -106,8 +129,8 @@ if st.session_state.timer_active:
 # --- Main UI Menu ---
 if not st.session_state.timer_active:
     
-    # --- Top Row: Daily Trackers ---
-    col1, col2, col3 = st.columns(3)
+    # --- Top Row: 4 Daily Tracker Boxes ---
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         with st.popover("📚 Tracker"):
@@ -185,215 +208,8 @@ if not st.session_state.timer_active:
                 st.session_state.workout_last_date = today
                 st.rerun()
 
-    st.write("---")
-    
-    # --- Bottom Section: EXAMS ---
-    st.write("### 📝 Upcoming Exams")
-    
-    with st.container(border=True):
-        # 1. Show existing exams dynamically
-        if len(st.session_state.exams) == 0:
-            st.caption("No exams added yet. You're clear!")
-            
-        for i, exam in enumerate(st.session_state.exams):
-            # Format the date exactly how you asked: "29 July 2026"
-            formatted_date = exam["date"].strftime("%d %B %Y")
-            
-            row_col1, row_col2 = st.columns([3, 1])
-            with row_col1:
-                if exam["score"] is not None:
-                    # If score is entered, show the green tick and the percentage!
-                    st.write(f"**{exam['subject']}** — {formatted_date} ✅ **{exam['score']}%**")
-                else:
-                    st.write(f"**{exam['subject']}** — {formatted_date}")
-            
-            with row_col2:
-                # If the current date matches or passes the exam date, and no score exists yet
-                if exam["score"] is None and today >= exam["date"]:
-                    with st.popover("✅ Enter Result"):
-                        st.write(f"Enter score for {exam['subject']}")
-                        score_val = st.number_input("Percentage (%)", min_value=0.0, max_value=100.0, step=0.1, key=f"score_input_{i}")
-                        
-                        if st.button("Save Result", key=f"save_score_{i}"):
-                            st.session_state.exams[i]["score"] = score_val
-                            st.rerun()
-
-        # 2. The button to add new ones
-        with st.popover("➕ Add New Exam"):
-            new_sub = st.text_input("Exam Subject", placeholder="e.g., Express Math")
-            new_date = st.date_input("Exam Date", min_value=today)
-            
-            btn1, btn2 = st.columns(2)
-            with btn1:
-                if st.button("Done", use_container_width=True):
-                    if new_sub:
-                        st.session_state.exams.append({
-                            "subject": new_sub,
-                            "date": new_date,
-                            "score": None
-                        })
-                        st.rerun()
-            with btn2:
-                if st.button("Cancel", use_container_width=True):
-                    st.rerun() # Refreshing the page safely closes the popover naturally
-                    # --- Bottom Section 2: COURSEWORK ---
-    if "courseworks" not in st.session_state:
-        st.session_state.courseworks = []
-
-    st.write("### 📘 Upcoming Coursework")
-    
-    with st.container(border=True):
-        if len(st.session_state.courseworks) == 0:
-            st.caption("No coursework added yet. Enjoy your free time!")
-            
-        for i, cw in enumerate(st.session_state.courseworks):
-            # Formats the calendar date perfectly
-            formatted_date = cw["due_date"].strftime("%d %B %Y")
-            
-            # Using 3 columns so the checkbox sits neatly on the left
-            row_col1, row_col2, row_col3 = st.columns([0.5, 3, 1.5])
-            
-            with row_col1:
-                # The completion checkbox
-                is_done = st.checkbox("Done", value=cw["completed"], key=f"cw_check_{i}", label_visibility="collapsed")
-                if is_done != cw["completed"]:
-                    st.session_state.courseworks[i]["completed"] = is_done
-                    st.rerun()
-                    
-            with row_col2:
-                if cw["score"] is not None:
-                    st.write(f"**{cw['subject']}** — Due: {formatted_date} ✅ **{cw['score']}%**")
-                else:
-                    st.write(f"**{cw['subject']}** — Due: {formatted_date}")
-            
-            with row_col3:
-                # STRICT LOCK: Score button ONLY appears if the checkbox is ticked!
-                if cw["completed"] and cw["score"] is None:
-                    with st.popover("✅ Enter Result"):
-                        st.write(f"Enter score for {cw['subject']}")
-                        score_val = st.number_input("Percentage (%)", min_value=0.0, max_value=100.0, step=0.1, key=f"cw_score_input_{i}")
-                        
-                        if st.button("Save Result", key=f"save_cw_score_{i}"):
-                            st.session_state.courseworks[i]["score"] = score_val
-                            st.rerun()
-
-        with st.popover("➕ Add New Coursework"):
-            new_cw_sub = st.text_input("Coursework Subject", placeholder="e.g., Geography Project", key="new_cw_sub")
-            new_cw_date = st.date_input("Due Date", min_value=today, key="new_cw_date")
-            
-            btn1, btn2 = st.columns(2)
-            with btn1:
-                if st.button("Done", key="cw_add_done", use_container_width=True):
-                    if new_cw_sub:
-                        st.session_state.courseworks.append({
-                            "subject": new_cw_sub,
-                            "due_date": new_cw_date,
-                            "completed": False,
-                            "score": None
-                        })
-                        st.rerun()
-            with btn2:
-                if st.button("Cancel", key="cw_add_cancel", use_container_width=True):
-                    st.rerun()
-# --- Bottom Section 3: HOMEWORK ---
-    if "homework" not in st.session_state:
-        st.session_state.homework = []
-
-    st.write("### 🎒 Homework Tracker")
-    
-    with st.container(border=True):
-        if len(st.session_state.homework) == 0:
-            st.caption("No homework! You are completely free.")
-            
-        for i, hw in enumerate(st.session_state.homework):
-            # Creates a bold red warning if it's due today
-            if hw["due_date"] == today:
-                date_display = "🔥 **DUE TODAY**"
-            else:
-                date_display = f"Due: {hw['due_date'].strftime('%d %B %Y')}"
-                
-            row_col1, row_col2 = st.columns([0.5, 4.5])
-            
-            with row_col1:
-                is_done = st.checkbox("Done", value=hw["completed"], key=f"hw_check_{i}", label_visibility="collapsed")
-                
-                # Auto-delete logic
-                if is_done and not hw["completed"]:
-                    if not hw["keep"]:
-                        st.session_state.homework.pop(i) # Instantly vanishes from the board!
-                        st.rerun()
-                    else:
-                        st.session_state.homework[i]["completed"] = True
-                        st.rerun()
-                elif not is_done and hw["completed"]:
-                    st.session_state.homework[i]["completed"] = False
-                    st.rerun()
-                    
-            with row_col2:
-                # Adds a strikethrough effect if you kept it on the board and finished it
-                if hw["completed"]:
-                    st.write(f"~~**{hw['subject']}**: {hw['task']} — {date_display}~~ ✅")
-                else:
-                    st.write(f"**{hw['subject']}**: {hw['task']} — {date_display}")
-
-        with st.popover("➕ Add New Homework"):
-            hw_sub = st.text_input("Subject", placeholder="e.g., Literature", key="new_hw_sub")
-            hw_task = st.text_area("What do you need to do?", placeholder="e.g., Finish character mindmap", key="new_hw_task")
-            
-            # The instant "Due Today" shortcut
-            due_today = st.checkbox("🔥 Due Today!", key="hw_due_today")
-            if due_today:
-                hw_date = today
-            else:
-                hw_date = st.date_input("Due Date", min_value=today, key="new_hw_date")
-                
-            hw_keep = st.checkbox("Keep assignment on board after completed", key="hw_keep")
-            
-            btn1, btn2 = st.columns(2)
-            with btn1:
-                if st.button("Done", key="hw_add_done", use_container_width=True):
-                    if hw_sub and hw_task:
-                        st.session_state.homework.append({
-                            "subject": hw_sub,
-                            "task": hw_task,
-                            "due_date": hw_date,
-                            "keep": hw_keep,
-                            "completed": False
-                        })
-                        st.rerun()
-            with btn2:
-                if st.button("Cancel", key="hw_add_cancel", use_container_width=True):
-                    st.rerun()
-# ==========================================
-    # --- ROUTINES MASTER BLOCK (ALL IN ONE) ---
-    # ==========================================
-
-    # 1. State Initialization
-    if "wash_total" not in st.session_state: st.session_state.wash_total = 0
-    if "sunblock_total" not in st.session_state: st.session_state.sunblock_total = 0
-    if "wash_day_done" not in st.session_state: st.session_state.wash_day_done = False
-    if "wash_night_done" not in st.session_state: st.session_state.wash_night_done = False
-    if "sunblock_done" not in st.session_state: st.session_state.sunblock_done = False
-    if "pack_bag_done" not in st.session_state: st.session_state.pack_bag_done = False
-    if "habits_last_date" not in st.session_state: st.session_state.habits_last_date = None
-    if "bible_chapters" not in st.session_state: st.session_state.bible_chapters = 0
-    if "bible_verses" not in st.session_state: st.session_state.bible_verses = 0
-    if "bible_days" not in st.session_state: st.session_state.bible_days = 0
-    if "bible_last_date" not in st.session_state: st.session_state.bible_last_date = None
-
-    # 2. Daily Reset Logic
-    if st.session_state.habits_last_date != today:
-        st.session_state.wash_day_done = False
-        st.session_state.wash_night_done = False
-        st.session_state.sunblock_done = False
-        st.session_state.pack_bag_done = False
-        st.session_state.habits_last_date = today
-
-    # 3. UI Box
     with col4:
         with st.popover("🌅 Routines"):
-            
-            # --- WASH FACE ---
             st.write("### 🧼 Wash Face")
             st.write(f"**Total Washes:** {st.session_state.wash_total}")
             st.write(f"**Sunblock Days:** {st.session_state.sunblock_total}")
@@ -418,7 +234,6 @@ if not st.session_state.timer_active:
                 
             st.divider()
             
-            # --- PACK BAG ---
             st.write("### 🎒 Pack Bag")
             p_bag = st.checkbox("Bag Packed", value=st.session_state.pack_bag_done, disabled=st.session_state.pack_bag_done)
             if p_bag and not st.session_state.pack_bag_done:
@@ -427,7 +242,6 @@ if not st.session_state.timer_active:
                 
             st.divider()
             
-            # --- BIBLE ---
             st.write("### 📖 Bible")
             st.write(f"**Days Read:** {st.session_state.bible_days} | **Ch:** {st.session_state.bible_chapters} | **V:** {st.session_state.bible_verses}")
             
@@ -450,3 +264,147 @@ if not st.session_state.timer_active:
                         st.rerun()
             else:
                 st.success("✅ Completed for today!")
+
+    st.write("---")
+    
+    # --- Bottom Section 1: EXAMS ---
+    st.write("### 📝 Upcoming Exams")
+    with st.container(border=True):
+        if len(st.session_state.exams) == 0:
+            st.caption("No exams added yet. You're clear!")
+            
+        for i, exam in enumerate(st.session_state.exams):
+            formatted_date = exam["date"].strftime("%d %B %Y")
+            row_col1, row_col2 = st.columns([3, 1])
+            with row_col1:
+                if exam["score"] is not None:
+                    st.write(f"**{exam['subject']}** — {formatted_date} ✅ **{exam['score']}%**")
+                else:
+                    st.write(f"**{exam['subject']}** — {formatted_date}")
+            
+            with row_col2:
+                if exam["score"] is None and today >= exam["date"]:
+                    with st.popover("✅ Enter Result"):
+                        st.write(f"Enter score for {exam['subject']}")
+                        score_val = st.number_input("Percentage (%)", min_value=0.0, max_value=100.0, step=0.1, key=f"score_input_{i}")
+                        if st.button("Save Result", key=f"save_score_{i}"):
+                            st.session_state.exams[i]["score"] = score_val
+                            st.rerun()
+
+        with st.popover("➕ Add New Exam"):
+            new_sub = st.text_input("Exam Subject", placeholder="e.g., Express Math")
+            new_date = st.date_input("Exam Date", min_value=today)
+            btn1, btn2 = st.columns(2)
+            with btn1:
+                if st.button("Done", key="exam_add_done", use_container_width=True):
+                    if new_sub:
+                        st.session_state.exams.append({"subject": new_sub, "date": new_date, "score": None})
+                        st.rerun()
+            with btn2:
+                if st.button("Cancel", key="exam_add_cancel", use_container_width=True):
+                    st.rerun()
+
+    # --- Bottom Section 2: COURSEWORK ---
+    st.write("### 📘 Upcoming Coursework")
+    with st.container(border=True):
+        if len(st.session_state.courseworks) == 0:
+            st.caption("No coursework added yet. Enjoy your free time!")
+            
+        for i, cw in enumerate(st.session_state.courseworks):
+            formatted_date = cw["due_date"].strftime("%d %B %Y")
+            row_col1, row_col2, row_col3 = st.columns([0.5, 3, 1.5])
+            
+            with row_col1:
+                is_done = st.checkbox("Done", value=cw["completed"], key=f"cw_check_{i}", label_visibility="collapsed")
+                if is_done != cw["completed"]:
+                    st.session_state.courseworks[i]["completed"] = is_done
+                    st.rerun()
+                    
+            with row_col2:
+                if cw["score"] is not None:
+                    st.write(f"**{cw['subject']}** — Due: {formatted_date} ✅ **{cw['score']}%**")
+                else:
+                    st.write(f"**{cw['subject']}** — Due: {formatted_date}")
+            
+            with row_col3:
+                if cw["completed"] and cw["score"] is None:
+                    with st.popover("✅ Enter Result"):
+                        st.write(f"Enter score for {cw['subject']}")
+                        score_val = st.number_input("Percentage (%)", min_value=0.0, max_value=100.0, step=0.1, key=f"cw_score_input_{i}")
+                        if st.button("Save Result", key=f"save_cw_score_{i}"):
+                            st.session_state.courseworks[i]["score"] = score_val
+                            st.rerun()
+
+        with st.popover("➕ Add New Coursework"):
+            new_cw_sub = st.text_input("Coursework Subject", placeholder="e.g., Geography Project", key="new_cw_sub")
+            new_cw_date = st.date_input("Due Date", min_value=today, key="new_cw_date")
+            btn1, btn2 = st.columns(2)
+            with btn1:
+                if st.button("Done", key="cw_add_done", use_container_width=True):
+                    if new_cw_sub:
+                        st.session_state.courseworks.append({"subject": new_cw_sub, "due_date": new_cw_date, "completed": False, "score": None})
+                        st.rerun()
+            with btn2:
+                if st.button("Cancel", key="cw_add_cancel", use_container_width=True):
+                    st.rerun()
+
+    # --- Bottom Section 3: HOMEWORK ---
+    st.write("### 🎒 Homework Tracker")
+    with st.container(border=True):
+        if len(st.session_state.homework) == 0:
+            st.caption("No homework! You are completely free.")
+            
+        for i, hw in enumerate(st.session_state.homework):
+            if hw["due_date"] == today:
+                date_display = "🔥 **DUE TODAY**"
+            else:
+                date_display = f"Due: {hw['due_date'].strftime('%d %B %Y')}"
+                
+            row_col1, row_col2 = st.columns([0.5, 4.5])
+            
+            with row_col1:
+                is_done = st.checkbox("Done", value=hw["completed"], key=f"hw_check_{i}", label_visibility="collapsed")
+                if is_done and not hw["completed"]:
+                    if not hw["keep"]:
+                        st.session_state.homework.pop(i) 
+                        st.rerun()
+                    else:
+                        st.session_state.homework[i]["completed"] = True
+                        st.rerun()
+                elif not is_done and hw["completed"]:
+                    st.session_state.homework[i]["completed"] = False
+                    st.rerun()
+                    
+            with row_col2:
+                if hw["completed"]:
+                    st.write(f"~~**{hw['subject']}**: {hw['task']} — {date_display}~~ ✅")
+                else:
+                    st.write(f"**{hw['subject']}**: {hw['task']} — {date_display}")
+
+        with st.popover("➕ Add New Homework"):
+            hw_sub = st.text_input("Subject", placeholder="e.g., Literature", key="new_hw_sub")
+            hw_task = st.text_area("What do you need to do?", placeholder="e.g., Finish character mindmap", key="new_hw_task")
+            due_today = st.checkbox("🔥 Due Today!", key="hw_due_today")
+            
+            if due_today:
+                hw_date = today
+            else:
+                hw_date = st.date_input("Due Date", min_value=today, key="new_hw_date")
+                
+            hw_keep = st.checkbox("Keep assignment on board after completed", key="hw_keep")
+            
+            btn1, btn2 = st.columns(2)
+            with btn1:
+                if st.button("Done", key="hw_add_done2", use_container_width=True):
+                    if hw_sub and hw_task:
+                        st.session_state.homework.append({
+                            "subject": hw_sub,
+                            "task": hw_task,
+                            "due_date": hw_date,
+                            "keep": hw_keep,
+                            "completed": False
+                        })
+                        st.rerun()
+            with btn2:
+                if st.button("Cancel", key="hw_add_cancel2", use_container_width=True):
+                    st.rerun()
