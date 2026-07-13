@@ -119,4 +119,7 @@ with ui_container.container():
                         ui_container.empty() # instantly erases the entire menu to prevent cheating!
                         if run_timer(5, sub):
                             st.session_state.half_sessions[sub] += 1
-                            if not has_completed_today and ((st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >=
+                            if not has_completed_today and ((st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)):
+                                st.session_state.streaks[sub] += 1
+                                st.session_state.last_studied_date[sub] = today
+                            st.rerun() # Brings the menu back and updates the stats
