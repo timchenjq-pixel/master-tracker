@@ -295,3 +295,72 @@ if not st.session_state.timer_active:
             with btn2:
                 if st.button("Cancel", key="cw_add_cancel", use_container_width=True):
                     st.rerun()
+# --- Bottom Section 3: HOMEWORK ---
+    if "homework" not in st.session_state:
+        st.session_state.homework = []
+
+    st.write("### 🎒 Homework Tracker")
+    
+    with st.container(border=True):
+        if len(st.session_state.homework) == 0:
+            st.caption("No homework! You are completely free.")
+            
+        for i, hw in enumerate(st.session_state.homework):
+            # Creates a bold red warning if it's due today
+            if hw["due_date"] == today:
+                date_display = "🔥 **DUE TODAY**"
+            else:
+                date_display = f"Due: {hw['due_date'].strftime('%d %B %Y')}"
+                
+            row_col1, row_col2 = st.columns([0.5, 4.5])
+            
+            with row_col1:
+                is_done = st.checkbox("Done", value=hw["completed"], key=f"hw_check_{i}", label_visibility="collapsed")
+                
+                # Auto-delete logic
+                if is_done and not hw["completed"]:
+                    if not hw["keep"]:
+                        st.session_state.homework.pop(i) # Instantly vanishes from the board!
+                        st.rerun()
+                    else:
+                        st.session_state.homework[i]["completed"] = True
+                        st.rerun()
+                elif not is_done and hw["completed"]:
+                    st.session_state.homework[i]["completed"] = False
+                    st.rerun()
+                    
+            with row_col2:
+                # Adds a strikethrough effect if you kept it on the board and finished it
+                if hw["completed"]:
+                    st.write(f"~~**{hw['subject']}**: {hw['task']} — {date_display}~~ ✅")
+                else:
+                    st.write(f"**{hw['subject']}**: {hw['task']} — {date_display}")
+
+        with st.popover("➕ Add New Homework"):
+            hw_sub = st.text_input("Subject", placeholder="e.g., Literature", key="new_hw_sub")
+            hw_task = st.text_area("What do you need to do?", placeholder="e.g., Finish character mindmap", key="new_hw_task")
+            
+            # The instant "Due Today" shortcut
+            due_today = st.checkbox("🔥 Due Today!", key="hw_due_today")
+            if due_today:
+                hw_date = today
+            else:
+                hw_date = st.date_input("Due Date", min_value=today, key="new_hw_date")
+                
+            hw_keep = st.checkbox("Keep assignment on board after completed", key="hw_keep")
+            
+            btn1, btn2 = st.columns(2)
+            with btn1:
+                if st.button("Done", key="hw_add_done", use_container_width=True):
+                    if hw_sub and hw_task:
+                        st.session_state.homework.append({
+                            "subject": hw_sub,
+                            "task": hw_task,
+                            "due_date": hw_date,
+                            "keep": hw_keep,
+                            "completed": False
+                        })
+                        st.rerun()
+            with btn2:
+                if st.button("Cancel", key="hw_add_cancel", use_container_width=True):
+                    st.rerun()
