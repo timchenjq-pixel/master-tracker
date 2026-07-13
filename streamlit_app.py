@@ -11,13 +11,23 @@ SUBJECTS = [
     "Literature", "Geography", "Life Science", "Physical Science"
 ]
 
-# State Initialization
+# State Initialization: Subjects
 for key in ["streaks", "half_sessions", "full_sessions"]:
     if key not in st.session_state:
         st.session_state[key] = {sub: 0 for sub in SUBJECTS}
 
 if "last_studied_date" not in st.session_state:
     st.session_state.last_studied_date = {sub: None for sub in SUBJECTS}
+
+# State Initialization: Japanese Box
+if "jp_streak" not in st.session_state:
+    st.session_state.jp_streak = 0
+if "jp_tasks" not in st.session_state:
+    st.session_state.jp_tasks = {"Duolingo": False, "Jgrammar": False, "Kanji Dojo": False}
+if "jp_completed_today" not in st.session_state:
+    st.session_state.jp_completed_today = False
+if "jp_last_date" not in st.session_state:
+    st.session_state.jp_last_date = None
 
 # Timer Memory State
 if "timer_active" not in st.session_state:
@@ -32,6 +42,7 @@ if "timer_type" not in st.session_state:
 today = date.today()
 
 # --- Streak Decay Logic ---
+# Normal Subjects
 for sub in SUBJECTS:
     last_date = st.session_state.last_studied_date[sub]
     if last_date is not None:
@@ -41,6 +52,14 @@ for sub in SUBJECTS:
             st.session_state.half_sessions[sub] = 0
             st.session_state.full_sessions[sub] = 0
             st.session_state.last_studied_date[sub] = None
+
+# Japanese Streak Decay (Miss 2 days = Streak dies)
+if st.session_state.jp_last_date is not None:
+    if (today - st.session_state.jp_last_date).days > 2:
+        st.session_state.jp_streak = 0
+        st.session_state.jp_tasks = {"Duolingo": False, "Jgrammar": False, "Kanji Dojo": False}
+        st.session_state.jp_completed_today = False
+        st.session_state.jp_last_date = None
 
 # --- Active Timer Display Logic ---
 if st.session_state.timer_active:
@@ -74,34 +93,11 @@ if st.session_state.timer_active:
     st.session_state.timer_active = False
     st.rerun()
 
-# --- Main UI Menu (JUST THE BOX) ---
+# --- Main UI Menu ---
 if not st.session_state.timer_active:
     
-    # This creates the actual box you click to open everything
-    with st.popover("📚 Open Tracker"):
-        
-        for sub in SUBJECTS:
-            has_completed_today = (st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)
-            status_emoji = "✅" if has_completed_today else "⏳"
-            streak_val = st.session_state.streaks[sub]
-            
-            with st.expander(f"{status_emoji} {sub} (Streak: {streak_val}d)"):
-                st.checkbox("Completed for today", value=has_completed_today, disabled=True, key=f"status_{sub}")
-                st.write(f"Progress: Full ({st.session_state.full_sessions[sub]}/1) | Half ({st.session_state.half_sessions[sub]}/2)")
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("⏱️ Full (15m)", key=f"full_{sub}", use_container_width=True):
-                        st.session_state.timer_active = True
-                        st.session_state.timer_end_time = datetime.now() + timedelta(minutes=15)
-                        st.session_state.timer_subject = sub
-                        st.session_state.timer_type = "full"
-                        st.rerun() 
-                            
-                with col2:
-                    if st.button("⚡ Half (5m)", key=f"half_{sub}", use_container_width=True):
-                        st.session_state.timer_active = True
-                        st.session_state.timer_end_time = datetime.now() + timedelta(minutes=5)
-                        st.session_state.timer_subject = sub
-                        st.session_state.timer_type = "half"
-                        st.rerun()
+    # Place the boxes side-by-side to keep the screen clean
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        with st.popover("📚
