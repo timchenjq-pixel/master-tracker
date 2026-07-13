@@ -1,10 +1,31 @@
+import requests
+
+def save_to_sheety(item_name, value):
+    url = st.secrets["SHEETY_URL"]
+    data = {"sheet1": {"item": item_name, "value": str(value)}}
+    try:
+        requests.post(url, json=data)
+    except:
+        pass
+
+def load_from_sheety():
+    url = st.secrets["SHEETY_URL"]
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()["sheet1"]
+            for row in data:
+                if row["item"] in st.session_state:
+                    st.session_state[row["item"]] = row["value"]
+    except:
+        pass
 import streamlit as st
 import time
 from datetime import date, datetime, timedelta
 
 # --- Page Config ---
 st.set_page_config(page_title="Study Tracker", page_icon="📚", layout="centered")
-
+load_from_sheety()
 # --- Core Data Setup ---
 SUBJECTS = [
     "Chinese", "English", "Math", "History", 
