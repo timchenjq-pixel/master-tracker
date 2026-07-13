@@ -28,12 +28,16 @@ if "jp_last_date" not in st.session_state: st.session_state.jp_last_date = None
 # 3. State Initialization: Activities (Piano & Workout)
 if "piano_count" not in st.session_state: st.session_state.piano_count = 0
 if "piano_last_date" not in st.session_state: st.session_state.piano_last_date = None
-if "piano_week" not in st.session_state: st.session_state.piano_week = date.today().isocalendar()[1] # Tracks the current week number
+if "piano_week" not in st.session_state: st.session_state.piano_week = date.today().isocalendar()[1]
 
 if "workout_total" not in st.session_state: st.session_state.workout_total = 0
 if "workout_last_date" not in st.session_state: st.session_state.workout_last_date = None
 
-# 4. Timer Memory State
+# 4. State Initialization: Exams (New!)
+if "exams" not in st.session_state: 
+    st.session_state.exams = [] # Stores a list of dictionaries
+
+# 5. Timer Memory State
 if "timer_active" not in st.session_state: st.session_state.timer_active = False
 if "timer_end_time" not in st.session_state: st.session_state.timer_end_time = None
 if "timer_subject" not in st.session_state: st.session_state.timer_subject = None
@@ -65,7 +69,7 @@ if st.session_state.jp_last_date is not None:
 current_week = today.isocalendar()[1]
 if st.session_state.piano_week != current_week:
     st.session_state.piano_week = current_week
-    st.session_state.piano_count = 0 # Resets back to 0 at the start of a new week
+    st.session_state.piano_count = 0 
 
 # --- Active Timer Display Logic ---
 if st.session_state.timer_active:
@@ -102,10 +106,9 @@ if st.session_state.timer_active:
 # --- Main UI Menu ---
 if not st.session_state.timer_active:
     
-    # We now have 3 columns for our 3 main boxes!
+    # --- Top Row: Daily Trackers ---
     col1, col2, col3 = st.columns(3)
     
-    # BOX 1: MAIN SUBJECTS
     with col1:
         with st.popover("📚 Tracker"):
             for sub in SUBJECTS:
@@ -134,12 +137,10 @@ if not st.session_state.timer_active:
                             st.session_state.timer_type = "half"
                             st.rerun()
 
-    # BOX 2: JAPANESE
     with col2:
         jp_label = "✅ Japanese (Done)" if st.session_state.jp_completed_today else "🎌 Japanese"
         with st.popover(jp_label):
             st.write(f"**Current Streak: {st.session_state.jp_streak} days**")
-            
             duo = st.checkbox("Duolingo", value=st.session_state.jp_tasks["Duolingo"], disabled=st.session_state.jp_completed_today)
             jgram = st.checkbox("Jgrammar", value=st.session_state.jp_tasks["Jgrammar"], disabled=st.session_state.jp_completed_today)
             kanji = st.checkbox("Kanji Dojo", value=st.session_state.jp_tasks["Kanji Dojo"], disabled=st.session_state.jp_completed_today)
@@ -156,15 +157,11 @@ if not st.session_state.timer_active:
                     st.session_state.jp_tasks["Jgrammar"] = jgram
                     st.session_state.jp_tasks["Kanji Dojo"] = kanji
 
-    # BOX 3: ACTIVITIES (New!)
     with col3:
         with st.popover("💪 Activities"):
-            
-            # --- PIANO SECTION ---
             st.write("### 🎹 Piano")
             piano_done_today = (st.session_state.piano_last_date == today)
             st.write(f"**Weekly Progress:** {st.session_state.piano_count} / 4 days")
-            
             p_tick = st.checkbox("Practice Complete", value=piano_done_today, disabled=piano_done_today)
             if p_tick and not piano_done_today:
                 st.session_state.piano_count += 1
@@ -173,16 +170,12 @@ if not st.session_state.timer_active:
                 
             st.divider()
             
-            # --- WORKOUT SECTION ---
             st.write("### 🏋️ Workout")
             st.write(f"**Total Lifetime Days:** {st.session_state.workout_total}")
-            
             workout_done_today = (st.session_state.workout_last_date == today)
             days_since_workout = (today - st.session_state.workout_last_date).days if st.session_state.workout_last_date else 999
             
-            # Disable checkbox if ticked today, OR if ticked yesterday (1 day ago)
             workout_disabled = workout_done_today or (days_since_workout == 1)
-            
             if days_since_workout == 1 and not workout_done_today:
                 st.caption("⏳ Rest Day! Checkbox will unlock tomorrow.")
                 
@@ -191,3 +184,55 @@ if not st.session_state.timer_active:
                 st.session_state.workout_total += 1
                 st.session_state.workout_last_date = today
                 st.rerun()
+
+    st.write("---")
+    
+    # --- Bottom Section: EXAMS ---
+    st.write("### 📝 Upcoming Exams")
+    
+    with st.container(border=True):
+        # 1. Show existing exams dynamically
+        if len(st.session_state.exams) == 0:
+            st.caption("No exams added yet. You're clear!")
+            
+        for i, exam in enumerate(st.session_state.exams):
+            # Format the date exactly how you asked: "29 July 2026"
+            formatted_date = exam["date"].strftime("%d %B %Y")
+            
+            row_col1, row_col2 = st.columns([3, 1])
+            with row_col1:
+                if exam["score"] is not None:
+                    # If score is entered, show the green tick and the percentage!
+                    st.write(f"**{exam['subject']}** — {formatted_date} ✅ **{exam['score']}%**")
+                else:
+                    st.write(f"**{exam['subject']}** — {formatted_date}")
+            
+            with row_col2:
+                # If the current date matches or passes the exam date, and no score exists yet
+                if exam["score"] is None and today >= exam["date"]:
+                    with st.popover("✅ Enter Result"):
+                        st.write(f"Enter score for {exam['subject']}")
+                        score_val = st.number_input("Percentage (%)", min_value=0.0, max_value=100.0, step=0.1, key=f"score_input_{i}")
+                        
+                        if st.button("Save Result", key=f"save_score_{i}"):
+                            st.session_state.exams[i]["score"] = score_val
+                            st.rerun()
+
+        # 2. The button to add new ones
+        with st.popover("➕ Add New Exam"):
+            new_sub = st.text_input("Exam Subject", placeholder="e.g., Express Math")
+            new_date = st.date_input("Exam Date", min_value=today)
+            
+            btn1, btn2 = st.columns(2)
+            with btn1:
+                if st.button("Done", use_container_width=True):
+                    if new_sub:
+                        st.session_state.exams.append({
+                            "subject": new_sub,
+                            "date": new_date,
+                            "score": None
+                        })
+                        st.rerun()
+            with btn2:
+                if st.button("Cancel", use_container_width=True):
+                    st.rerun() # Refreshing the page safely closes the popover naturally
