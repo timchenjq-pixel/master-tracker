@@ -236,3 +236,62 @@ if not st.session_state.timer_active:
             with btn2:
                 if st.button("Cancel", use_container_width=True):
                     st.rerun() # Refreshing the page safely closes the popover naturally
+                    # --- Bottom Section 2: COURSEWORK ---
+    if "courseworks" not in st.session_state:
+        st.session_state.courseworks = []
+
+    st.write("### 📘 Upcoming Coursework")
+    
+    with st.container(border=True):
+        if len(st.session_state.courseworks) == 0:
+            st.caption("No coursework added yet. Enjoy your free time!")
+            
+        for i, cw in enumerate(st.session_state.courseworks):
+            # Formats the calendar date perfectly
+            formatted_date = cw["due_date"].strftime("%d %B %Y")
+            
+            # Using 3 columns so the checkbox sits neatly on the left
+            row_col1, row_col2, row_col3 = st.columns([0.5, 3, 1.5])
+            
+            with row_col1:
+                # The completion checkbox
+                is_done = st.checkbox("Done", value=cw["completed"], key=f"cw_check_{i}", label_visibility="collapsed")
+                if is_done != cw["completed"]:
+                    st.session_state.courseworks[i]["completed"] = is_done
+                    st.rerun()
+                    
+            with row_col2:
+                if cw["score"] is not None:
+                    st.write(f"**{cw['subject']}** — Due: {formatted_date} ✅ **{cw['score']}%**")
+                else:
+                    st.write(f"**{cw['subject']}** — Due: {formatted_date}")
+            
+            with row_col3:
+                # STRICT LOCK: Score button ONLY appears if the checkbox is ticked!
+                if cw["completed"] and cw["score"] is None:
+                    with st.popover("✅ Enter Result"):
+                        st.write(f"Enter score for {cw['subject']}")
+                        score_val = st.number_input("Percentage (%)", min_value=0.0, max_value=100.0, step=0.1, key=f"cw_score_input_{i}")
+                        
+                        if st.button("Save Result", key=f"save_cw_score_{i}"):
+                            st.session_state.courseworks[i]["score"] = score_val
+                            st.rerun()
+
+        with st.popover("➕ Add New Coursework"):
+            new_cw_sub = st.text_input("Coursework Subject", placeholder="e.g., Geography Project", key="new_cw_sub")
+            new_cw_date = st.date_input("Due Date", min_value=today, key="new_cw_date")
+            
+            btn1, btn2 = st.columns(2)
+            with btn1:
+                if st.button("Done", key="cw_add_done", use_container_width=True):
+                    if new_cw_sub:
+                        st.session_state.courseworks.append({
+                            "subject": new_cw_sub,
+                            "due_date": new_cw_date,
+                            "completed": False,
+                            "score": None
+                        })
+                        st.rerun()
+            with btn2:
+                if st.button("Cancel", key="cw_add_cancel", use_container_width=True):
+                    st.rerun()
