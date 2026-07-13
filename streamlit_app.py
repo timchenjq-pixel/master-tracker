@@ -100,4 +100,55 @@ if not st.session_state.timer_active:
     col1, col2 = st.columns(2)
     
     with col1:
-        with st.popover("📚
+        with st.popover("📚 Open Tracker"):
+            for sub in SUBJECTS:
+                has_completed_today = (st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)
+                status_emoji = "✅" if has_completed_today else "⏳"
+                streak_val = st.session_state.streaks[sub]
+                
+                with st.expander(f"{status_emoji} {sub} (Streak: {streak_val}d)"):
+                    st.checkbox("Completed for today", value=has_completed_today, disabled=True, key=f"status_{sub}")
+                    st.write(f"Progress: Full ({st.session_state.full_sessions[sub]}/1) | Half ({st.session_state.half_sessions[sub]}/2)")
+                    
+                    btn_col1, btn_col2 = st.columns(2)
+                    with btn_col1:
+                        if st.button("⏱️ Full (15m)", key=f"full_{sub}", use_container_width=True):
+                            st.session_state.timer_active = True
+                            st.session_state.timer_end_time = datetime.now() + timedelta(minutes=15)
+                            st.session_state.timer_subject = sub
+                            st.session_state.timer_type = "full"
+                            st.rerun() 
+                                
+                    with btn_col2:
+                        if st.button("⚡ Half (5m)", key=f"half_{sub}", use_container_width=True):
+                            st.session_state.timer_active = True
+                            st.session_state.timer_end_time = datetime.now() + timedelta(minutes=5)
+                            st.session_state.timer_subject = sub
+                            st.session_state.timer_type = "half"
+                            st.rerun()
+
+    with col2:
+        # Changes appearance automatically upon completion
+        jp_label = "✅ Japanese (Complete)" if st.session_state.jp_completed_today else "🎌 Japanese"
+        
+        with st.popover(jp_label):
+            st.write(f"**Current Streak: {st.session_state.jp_streak} days**")
+            
+            # The manual checkboxes
+            duo = st.checkbox("Duolingo", value=st.session_state.jp_tasks["Duolingo"], disabled=st.session_state.jp_completed_today)
+            jgram = st.checkbox("Jgrammar", value=st.session_state.jp_tasks["Jgrammar"], disabled=st.session_state.jp_completed_today)
+            kanji = st.checkbox("Kanji Dojo", value=st.session_state.jp_tasks["Kanji Dojo"], disabled=st.session_state.jp_completed_today)
+
+            # Auto-complete and exit logic
+            if not st.session_state.jp_completed_today:
+                if duo and jgram and kanji:
+                    st.session_state.jp_completed_today = True
+                    st.session_state.jp_streak += 1
+                    st.session_state.jp_last_date = today
+                    st.session_state.jp_tasks = {"Duolingo": True, "Jgrammar": True, "Kanji Dojo": True}
+                    st.rerun() # Automatically kicks you out of the menu!
+                else:
+                    # Save progress if they only tick 1 or 2 boxes
+                    st.session_state.jp_tasks["Duolingo"] = duo
+                    st.session_state.jp_tasks["Jgrammar"] = jgram
+                    st.session_state.jp_tasks["Kanji Dojo"] = kanji
