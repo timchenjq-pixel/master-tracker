@@ -59,23 +59,23 @@ def load_from_sheety():
         pass
 
 # --- Page Config ---
-st.set_page_config(page_title="Master Tracker", layout="centered")
+st.set_page_config(page_title="Tim's Tracker", layout="centered")
 
-# --- The Brute Force White Bar & Header Nuke ---
+# --- The Brute Force BLACK Bar & Header Nuke ---
 brute_force_bar = """
     <style>
     /* Hides the top header menu completely */
     [data-testid="stHeader"] {display: none !important;}
     
-    /* The giant white box to cover the bottom footer */
+    /* The giant BLACK box to cover the bottom footer */
     .cover-up {
         position: fixed;
         bottom: 0;
         left: 0;
         width: 100%;
-        height: 60px; 
-        background-color: white; 
-        z-index: 999999; 
+        height: 80px; /* Made it taller to completely swallow the icons */
+        background-color: black; /* Switched to black! */
+        z-index: 999999999 !important; /* Ridiculously high number to force it on top of everything */
     }
     </style>
     <div class="cover-up"></div>
