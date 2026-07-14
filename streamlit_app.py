@@ -59,7 +59,7 @@ def load_from_sheety():
         pass
 
 # --- Page Config ---
-st.set_page_config(page_title="Tim's Tracker", layout="centered")
+st.set_page_config(page_title="Master Tracker", layout="centered")
 
 # --- The Brute Force BLACK Bar & Header Nuke ---
 brute_force_bar = """
