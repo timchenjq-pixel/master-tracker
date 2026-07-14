@@ -13,7 +13,7 @@ def load_from_sheety():
     try:
         response = requests.get(url)
         if response.status_code == 200:
-            data = response.json()["sheet1"]
+            data = response.json()["sheet1s"]
             for row in data:
                 if row["item"] in st.session_state:
                     st.session_state[row["item"]] = row["value"]
@@ -430,15 +430,3 @@ if not st.session_state.timer_active:
                 if st.button("Cancel", key="hw_add_cancel2", use_container_width=True):
                     st.rerun()
 
-# --- NUCLEAR HIDE STREAMLIT BRANDING ---
-st.markdown("""
-    <style>
-    #MainMenu {visibility: hidden !important;}
-    footer {visibility: hidden !important;}
-    header {visibility: hidden !important;}
-    div[data-testid="stToolbar"] {visibility: hidden !important;}
-    div[data-testid="stDecoration"] {visibility: hidden !important;}
-    div[data-testid="stStatusWidget"] {visibility: hidden !important;}
-    #stHeader {visibility: hidden !important;}
-    </style>
-    """, unsafe_allow_html=True)
