@@ -59,12 +59,12 @@ def load_from_sheety():
         pass
 
 # --- Page Config ---
-st.set_page_config(page_title="Study Tracker", page_icon="📚", layout="centered")
+st.set_page_config(page_title="Tim's Tracker", layout="centered")
 
-# --- The Brute Force White Bar ---
+# --- The Brute Force White Bar & Header Nuke ---
 brute_force_bar = """
     <style>
-    /* Forcefully hides the top header menu completely */
+    /* Hides the top header menu completely */
     [data-testid="stHeader"] {display: none !important;}
     
     /* The giant white box to cover the bottom footer */
@@ -73,9 +73,9 @@ brute_force_bar = """
         bottom: 0;
         left: 0;
         width: 100%;
-        height: 60px; /* Makes the bar 60 pixels tall. Increase if it doesn't cover enough */
-        background-color: white; /* Matches the default app background */
-        z-index: 999999; /* Forces it to sit on top of everything else */
+        height: 60px; 
+        background-color: white; 
+        z-index: 999999; 
     }
     </style>
     <div class="cover-up"></div>
