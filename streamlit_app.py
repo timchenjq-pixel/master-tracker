@@ -61,17 +61,26 @@ def load_from_sheety():
 # --- Page Config ---
 st.set_page_config(page_title="Study Tracker", page_icon="📚", layout="centered")
 
-hide_streamlit_style = """
+# --- The Brute Force White Bar ---
+brute_force_bar = """
     <style>
-    /* Hides the top menu hamburger and header */
-    header {visibility: hidden;}
-    /* Hides the 'Made with Streamlit' footer */
-    footer {visibility: hidden;}
-    /* Removes the empty blank space left at the top */
-    .block-container {padding-top: 2rem;}
+    /* Forcefully hides the top header menu completely */
+    [data-testid="stHeader"] {display: none !important;}
+    
+    /* The giant white box to cover the bottom footer */
+    .cover-up {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 60px; /* Makes the bar 60 pixels tall. Increase if it doesn't cover enough */
+        background-color: white; /* Matches the default app background */
+        z-index: 999999; /* Forces it to sit on top of everything else */
+    }
     </style>
+    <div class="cover-up"></div>
 """
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+st.markdown(brute_force_bar, unsafe_allow_html=True)
 # --- Core Data Setup ---
 SUBJECTS = [
     "Chinese", "English", "Math", "History", 
