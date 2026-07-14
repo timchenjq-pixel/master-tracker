@@ -61,26 +61,13 @@ def load_from_sheety():
 # --- Page Config ---
 st.set_page_config(page_title="Master Tracker", layout="centered")
 
-# --- The Brute Force BLACK Bar & Header Nuke ---
-brute_force_bar = """
+# --- Top Header Nuke ---
+hide_header = """
     <style>
-    /* Hides the top header menu completely */
     [data-testid="stHeader"] {display: none !important;}
-    
-    /* The giant BLACK box to cover the bottom footer */
-    .cover-up {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        height: 80px; /* Made it taller to completely swallow the icons */
-        background-color: black; /* Switched to black! */
-        z-index: 999999999 !important; /* Ridiculously high number to force it on top of everything */
-    }
     </style>
-    <div class="cover-up"></div>
 """
-st.markdown(brute_force_bar, unsafe_allow_html=True)
+st.markdown(hide_header, unsafe_allow_html=True)
 # --- Core Data Setup ---
 SUBJECTS = [
     "Chinese", "English", "Math", "History", 
