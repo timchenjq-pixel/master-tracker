@@ -1,4 +1,7 @@
 import requests
+import streamlit as st
+import time
+from datetime import date, datetime, timedelta
 
 def save_to_sheety(item_name, value):
     url = st.secrets["SHEETY_URL"]
@@ -13,19 +16,21 @@ def load_from_sheety():
     try:
         response = requests.get(url)
         if response.status_code == 200:
-            data = response.json()["sheet1s"]
+            data = response.json()["sheet1S"]
             for row in data:
                 if row["item"] in st.session_state:
-                    st.session_state[row["item"]] = row["value"]
+                    # eval() ensures dictionaries/lists load back properly instead of crashing as text
+                    try:
+                        st.session_state[row["item"]] = eval(row["value"])
+                    except:
+                        st.session_state[row["item"]] = row["value"]
     except:
         pass
-import streamlit as st
-import time
-from datetime import date, datetime, timedelta
 
 # --- Page Config ---
 st.set_page_config(page_title="Study Tracker", page_icon="📚", layout="centered")
 load_from_sheety()
+
 # --- Core Data Setup ---
 SUBJECTS = [
     "Chinese", "English", "Math", "History", 
@@ -145,6 +150,14 @@ if st.session_state.timer_active:
         st.session_state.last_studied_date[sub] = today
         
     st.session_state.timer_active = False
+
+    # TIMER SAVES
+    save_to_sheety("full_sessions", st.session_state.full_sessions)
+    save_to_sheety("half_sessions", st.session_state.half_sessions)
+    save_to_sheety("streaks", st.session_state.streaks)
+    save_to_sheety("last_studied_date", st.session_state.last_studied_date)
+    save_to_sheety("timer_active", st.session_state.timer_active)
+
     st.rerun()
 
 # --- Main UI Menu ---
@@ -195,11 +208,16 @@ if not st.session_state.timer_active:
                     st.session_state.jp_streak += 1
                     st.session_state.jp_last_date = today
                     st.session_state.jp_tasks = {"Duolingo": True, "Jgrammar": True, "Kanji Dojo": True}
+                    save_to_sheety("jp_completed_today", st.session_state.jp_completed_today)
+                    save_to_sheety("jp_streak", st.session_state.jp_streak)
+                    save_to_sheety("jp_last_date", st.session_state.jp_last_date)
+                    save_to_sheety("jp_tasks", st.session_state.jp_tasks)
                     st.rerun() 
                 else:
                     st.session_state.jp_tasks["Duolingo"] = duo
                     st.session_state.jp_tasks["Jgrammar"] = jgram
                     st.session_state.jp_tasks["Kanji Dojo"] = kanji
+                    save_to_sheety("jp_tasks", st.session_state.jp_tasks) # Catch auto-reloads
 
     with col3:
         with st.popover("💪 Activities"):
@@ -210,6 +228,8 @@ if not st.session_state.timer_active:
             if p_tick and not piano_done_today:
                 st.session_state.piano_count += 1
                 st.session_state.piano_last_date = today
+                save_to_sheety("piano_count", st.session_state.piano_count)
+                save_to_sheety("piano_last_date", st.session_state.piano_last_date)
                 st.rerun()
                 
             st.divider()
@@ -227,6 +247,8 @@ if not st.session_state.timer_active:
             if w_tick and not workout_done_today:
                 st.session_state.workout_total += 1
                 st.session_state.workout_last_date = today
+                save_to_sheety("workout_total", st.session_state.workout_total)
+                save_to_sheety("workout_last_date", st.session_state.workout_last_date)
                 st.rerun()
 
     with col4:
@@ -239,18 +261,24 @@ if not st.session_state.timer_active:
             if w_day and not st.session_state.wash_day_done:
                 st.session_state.wash_total += 1
                 st.session_state.wash_day_done = True
+                save_to_sheety("wash_total", st.session_state.wash_total)
+                save_to_sheety("wash_day_done", st.session_state.wash_day_done)
                 st.rerun()
                 
             w_night = st.checkbox("Night Wash", value=st.session_state.wash_night_done, disabled=st.session_state.wash_night_done)
             if w_night and not st.session_state.wash_night_done:
                 st.session_state.wash_total += 1
                 st.session_state.wash_night_done = True
+                save_to_sheety("wash_total", st.session_state.wash_total)
+                save_to_sheety("wash_night_done", st.session_state.wash_night_done)
                 st.rerun()
                 
             s_block = st.checkbox("Put Sunblock Today", value=st.session_state.sunblock_done, disabled=st.session_state.sunblock_done)
             if s_block and not st.session_state.sunblock_done:
                 st.session_state.sunblock_total += 1
                 st.session_state.sunblock_done = True
+                save_to_sheety("sunblock_total", st.session_state.sunblock_total)
+                save_to_sheety("sunblock_done", st.session_state.sunblock_done)
                 st.rerun()
                 
             st.divider()
@@ -259,6 +287,7 @@ if not st.session_state.timer_active:
             p_bag = st.checkbox("Bag Packed", value=st.session_state.pack_bag_done, disabled=st.session_state.pack_bag_done)
             if p_bag and not st.session_state.pack_bag_done:
                 st.session_state.pack_bag_done = True
+                save_to_sheety("pack_bag_done", st.session_state.pack_bag_done)
                 st.rerun()
                 
             st.divider()
@@ -276,12 +305,18 @@ if not st.session_state.timer_active:
                         st.session_state.bible_chapters += 1
                         st.session_state.bible_days += 1
                         st.session_state.bible_last_date = today
+                        save_to_sheety("bible_chapters", st.session_state.bible_chapters)
+                        save_to_sheety("bible_days", st.session_state.bible_days)
+                        save_to_sheety("bible_last_date", st.session_state.bible_last_date)
                         st.rerun()
                 with b_col2:
                     if st.button("1 Verse", use_container_width=True):
                         st.session_state.bible_verses += 1
                         st.session_state.bible_days += 1
                         st.session_state.bible_last_date = today
+                        save_to_sheety("bible_verses", st.session_state.bible_verses)
+                        save_to_sheety("bible_days", st.session_state.bible_days)
+                        save_to_sheety("bible_last_date", st.session_state.bible_last_date)
                         st.rerun()
             else:
                 st.success("✅ Completed for today!")
@@ -310,6 +345,7 @@ if not st.session_state.timer_active:
                         score_val = st.number_input("Percentage (%)", min_value=0.0, max_value=100.0, step=0.1, key=f"score_input_{i}")
                         if st.button("Save Result", key=f"save_score_{i}"):
                             st.session_state.exams[i]["score"] = score_val
+                            save_to_sheety("exams", st.session_state.exams)
                             st.rerun()
 
         with st.popover("➕ Add New Exam"):
@@ -320,6 +356,7 @@ if not st.session_state.timer_active:
                 if st.button("Done", key="exam_add_done", use_container_width=True):
                     if new_sub:
                         st.session_state.exams.append({"subject": new_sub, "date": new_date, "score": None})
+                        save_to_sheety("exams", st.session_state.exams)
                         st.rerun()
             with btn2:
                 if st.button("Cancel", key="exam_add_cancel", use_container_width=True):
@@ -339,6 +376,7 @@ if not st.session_state.timer_active:
                 is_done = st.checkbox("Done", value=cw["completed"], key=f"cw_check_{i}", label_visibility="collapsed")
                 if is_done != cw["completed"]:
                     st.session_state.courseworks[i]["completed"] = is_done
+                    save_to_sheety("courseworks", st.session_state.courseworks)
                     st.rerun()
                     
             with row_col2:
@@ -354,6 +392,7 @@ if not st.session_state.timer_active:
                         score_val = st.number_input("Percentage (%)", min_value=0.0, max_value=100.0, step=0.1, key=f"cw_score_input_{i}")
                         if st.button("Save Result", key=f"save_cw_score_{i}"):
                             st.session_state.courseworks[i]["score"] = score_val
+                            save_to_sheety("courseworks", st.session_state.courseworks)
                             st.rerun()
 
         with st.popover("➕ Add New Coursework"):
@@ -364,6 +403,7 @@ if not st.session_state.timer_active:
                 if st.button("Done", key="cw_add_done", use_container_width=True):
                     if new_cw_sub:
                         st.session_state.courseworks.append({"subject": new_cw_sub, "due_date": new_cw_date, "completed": False, "score": None})
+                        save_to_sheety("courseworks", st.session_state.courseworks)
                         st.rerun()
             with btn2:
                 if st.button("Cancel", key="cw_add_cancel", use_container_width=True):
@@ -388,12 +428,15 @@ if not st.session_state.timer_active:
                 if is_done and not hw["completed"]:
                     if not hw["keep"]:
                         st.session_state.homework.pop(i) 
+                        save_to_sheety("homework", st.session_state.homework)
                         st.rerun()
                     else:
                         st.session_state.homework[i]["completed"] = True
+                        save_to_sheety("homework", st.session_state.homework)
                         st.rerun()
                 elif not is_done and hw["completed"]:
                     st.session_state.homework[i]["completed"] = False
+                    save_to_sheety("homework", st.session_state.homework)
                     st.rerun()
                     
             with row_col2:
@@ -425,8 +468,8 @@ if not st.session_state.timer_active:
                             "keep": hw_keep,
                             "completed": False
                         })
+                        save_to_sheety("homework", st.session_state.homework)
                         st.rerun()
             with btn2:
                 if st.button("Cancel", key="hw_add_cancel2", use_container_width=True):
                     st.rerun()
-
