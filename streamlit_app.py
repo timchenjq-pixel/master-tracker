@@ -61,6 +61,17 @@ def load_from_sheety():
 # --- Page Config ---
 st.set_page_config(page_title="Study Tracker", page_icon="📚", layout="centered")
 
+hide_streamlit_style = """
+    <style>
+    /* Hides the top menu hamburger and header */
+    header {visibility: hidden;}
+    /* Hides the 'Made with Streamlit' footer */
+    footer {visibility: hidden;}
+    /* Removes the empty blank space left at the top */
+    .block-container {padding-top: 2rem;}
+    </style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 # --- Core Data Setup ---
 SUBJECTS = [
     "Chinese", "English", "Math", "History", 
