@@ -3,61 +3,58 @@ import streamlit as st
 import time
 from datetime import date, datetime, timedelta
 
+def get_sheet_key():
+    return st.secrets["SHEETY_URL"].rstrip('/').split('/')[-1]
+
 def save_to_sheety(item_name, value):
     url = st.secrets["SHEETY_URL"]
+    sheet_key = get_sheet_key() 
     
-    # Track the row IDs so we can overwrite instead of stacking
     if "sheety_ids" not in st.session_state:
         st.session_state.sheety_ids = {}
         
     row_id = st.session_state.sheety_ids.get(item_name)
     save_val = str(value) 
     
-    if row_id:
-        # OVERWRITE the existing row
-        put_url = f"{url}/{row_id}"
-        data = {"sheet1": {"item": item_name, "value": save_val}}
-        try:
-            requests.put(put_url, json=data)
-        except:
-            pass
-    else:
-        # Create a new row (only happens the very first time an item is saved)
-        data = {"sheet1": {"item": item_name, "value": save_val}}
-        try:
+    data = {sheet_key: {"item": item_name, "value": save_val}}
+    
+    try:
+        if row_id:
+            requests.put(f"{url}/{row_id}", json=data)
+        else:
             response = requests.post(url, json=data)
             if response.status_code == 200:
-                new_id = response.json()["sheet1"]["id"]
-                st.session_state.sheety_ids[item_name] = new_id
-        except:
-            pass
+                json_data = response.json()
+                ret_key = list(json_data.keys())[0]
+                st.session_state.sheety_ids[item_name] = json_data[ret_key].get("id")
+    except:
+        pass
 
 def load_from_sheety():
     url = st.secrets["SHEETY_URL"]
-    st.session_state.sheety_ids = {} # Reset IDs on load
+    st.session_state.sheety_ids = {} 
         
     try:
         response = requests.get(url)
         if response.status_code == 200:
-            data = response.json()["sheet1S"]
-            for row in data:
-                st.session_state.sheety_ids[row["item"]] = row["id"]
-                
-                if row["item"] in st.session_state:
-                    val_str = row["value"]
-                    if val_str == "True": val = True
-                    elif val_str == "False": val = False
-                    elif val_str == "None": val = None
-                    elif val_str.isdigit(): val = int(val_str)
-                    elif val_str.startswith("{") or val_str.startswith("["):
-                        try:
-                            val = eval(val_str)
-                        except:
+            json_data = response.json()
+            if json_data:
+                first_key = list(json_data.keys())[0]
+                data = json_data[first_key]
+                for row in data:
+                    st.session_state.sheety_ids[row["item"]] = row.get("id")
+                    if row["item"] in st.session_state:
+                        val_str = str(row.get("value", ""))
+                        if val_str == "True": val = True
+                        elif val_str == "False": val = False
+                        elif val_str == "None": val = None
+                        elif val_str.isdigit(): val = int(val_str)
+                        elif val_str.startswith("{") or val_str.startswith("["):
+                            try: val = eval(val_str)
+                            except: val = val_str
+                        else:
                             val = val_str
-                    else:
-                        val = val_str
-                        
-                    st.session_state[row["item"]] = val
+                        st.session_state[row["item"]] = val
     except:
         pass
 
@@ -103,8 +100,10 @@ if "timer_end_time" not in st.session_state: st.session_state.timer_end_time = N
 if "timer_subject" not in st.session_state: st.session_state.timer_subject = None
 if "timer_type" not in st.session_state: st.session_state.timer_type = None
 
-# Load memory after initializing structure
-load_from_sheety()
+# LOAD MEMORY ONCE PER REFRESH
+if "memory_loaded" not in st.session_state:
+    load_from_sheety()
+    st.session_state.memory_loaded = True
 
 today = date.today()
 today_str = str(today)
