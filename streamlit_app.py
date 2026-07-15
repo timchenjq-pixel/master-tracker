@@ -20,22 +20,28 @@ def save_to_sheety(item_name, value):
     
     try:
         if row_id:
-            requests.put(f"{url}/{row_id}", json=data)
+            response = requests.put(f"{url}/{row_id}", json=data)
+            if response.status_code != 200:
+                st.error(f"Sheety Error: {response.text}")
         else:
             response = requests.post(url, json=data)
             if response.status_code == 200:
                 json_data = response.json()
                 ret_key = list(json_data.keys())[0]
                 st.session_state.sheety_ids[item_name] = json_data[ret_key].get("id")
-    except:
-        pass
+            else:
+                st.error(f"Sheety Error: {response.text}")
+    except Exception as e:
+        st.error(f"Code Error: {e}")
 
 def load_from_sheety():
     url = st.secrets["SHEETY_URL"]
     st.session_state.sheety_ids = {} 
         
     try:
-        response = requests.get(url)
+        headers = {"Cache-Control": "no-cache"}
+        response = requests.get(url, headers=headers)
+        
         if response.status_code == 200:
             json_data = response.json()
             if json_data:
@@ -68,6 +74,7 @@ hide_header = """
     </style>
 """
 st.markdown(hide_header, unsafe_allow_html=True)
+
 # --- Core Data Setup ---
 SUBJECTS = [
     "Chinese", "English", "Math", "History", 
