@@ -80,10 +80,12 @@ if "bible_chapters" not in st.session_state: st.session_state.bible_chapters = 0
 if "bible_verses" not in st.session_state: st.session_state.bible_verses = 0
 if "bible_days" not in st.session_state: st.session_state.bible_days = 0
 if "bible_last_date" not in st.session_state: st.session_state.bible_last_date = None
+
+# New Bulletproof Timer States
 if "timer_active" not in st.session_state: st.session_state.timer_active = False
-if "timer_end_time" not in st.session_state: st.session_state.timer_end_time = None
-if "timer_subject" not in st.session_state: st.session_state.timer_subject = None
-if "timer_type" not in st.session_state: st.session_state.timer_type = None
+if "timer_end_time" not in st.session_state: st.session_state.timer_end_time = 0.0
+if "timer_subject" not in st.session_state: st.session_state.timer_subject = "None"
+if "timer_type" not in st.session_state: st.session_state.timer_type = "None"
 
 today = date.today()
 today_str = str(today)
@@ -156,40 +158,57 @@ if st.session_state.piano_week != current_week:
 
 # --- Active Timer Display Logic ---
 if st.session_state.timer_active:
-    time_left = (st.session_state.timer_end_time - datetime.now()).total_seconds()
+    try:
+        end_time_val = float(st.session_state.timer_end_time)
+    except:
+        end_time_val = 0.0
+        
+    time_left = end_time_val - datetime.now().timestamp()
+    
     if time_left > 0:
         timer_display = st.empty()
-        for i in range(int(time_left), -1, -1):
-            mins, secs = divmod(i, 60)
-            timer_display.markdown(
-                f"<h1 style='text-align: center; font-size: 80px; margin-top: 20vh;'>⏱️ {mins:02d}:{secs:02d}</h1>"
-                f"<h3 style='text-align: center; color: gray;'>Focusing on {st.session_state.timer_subject}...</h3>", 
-                unsafe_allow_html=True
-            )
-            time.sleep(1)
-        timer_display.empty()
+        try:
+            for i in range(int(time_left), -1, -1):
+                mins, secs = divmod(i, 60)
+                timer_display.markdown(
+                    f"<h1 style='text-align: center; font-size: 80px; margin-top: 20vh;'>⏱️ {mins:02d}:{secs:02d}</h1>"
+                    f"<h3 style='text-align: center; color: gray;'>Focusing on {st.session_state.timer_subject}...</h3>", 
+                    unsafe_allow_html=True
+                )
+                time.sleep(1)
+            timer_display.empty()
+        except Exception:
+            # User closed the app or screen went to sleep. Stop safely.
+            st.stop()
+            
+    # Verify the time is actually up and not just a glitch
+    if datetime.now().timestamp() >= end_time_val and end_time_val > 0:
+        sub = st.session_state.timer_subject
+        t_type = st.session_state.timer_type
         
-    sub = st.session_state.timer_subject
-    t_type = st.session_state.timer_type
-    has_completed_today = (st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)
-    
-    if t_type == "full":
-        st.session_state.full_sessions[sub] += 1
-    else:
-        st.session_state.half_sessions[sub] += 1
-        
-    if not has_completed_today and ((st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)):
-        st.session_state.streaks[sub] += 1
-        st.session_state.last_studied_date[sub] = today_str
-        
-    st.session_state.timer_active = False
-
-    save_to_sheety("full_sessions", st.session_state.full_sessions)
-    save_to_sheety("half_sessions", st.session_state.half_sessions)
-    save_to_sheety("streaks", st.session_state.streaks)
-    save_to_sheety("last_studied_date", st.session_state.last_studied_date)
-    save_to_sheety("timer_active", False)
-    st.rerun()
+        if sub in SUBJECTS:
+            has_completed_today = (st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)
+            
+            if t_type == "full":
+                st.session_state.full_sessions[sub] += 1
+            else:
+                st.session_state.half_sessions[sub] += 1
+                
+            if not has_completed_today and ((st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)):
+                st.session_state.streaks[sub] += 1
+                st.session_state.last_studied_date[sub] = today_str
+                
+            save_to_sheety("full_sessions", st.session_state.full_sessions)
+            save_to_sheety("half_sessions", st.session_state.half_sessions)
+            save_to_sheety("streaks", st.session_state.streaks)
+            save_to_sheety("last_studied_date", st.session_state.last_studied_date)
+            
+        st.session_state.timer_active = False
+        save_to_sheety("timer_active", False)
+        st.rerun()
+    elif time_left > 0:
+        # Prevent the rest of the app from loading if the timer is still somehow active but we hit an exception
+        st.stop()
 
 # --- Main UI Menu ---
 if not st.session_state.timer_active:
@@ -211,18 +230,24 @@ if not st.session_state.timer_active:
                     with btn_col1:
                         if st.button("⏱️ Full (15m)", key=f"full_{sub}", use_container_width=True):
                             st.session_state.timer_active = True
-                            st.session_state.timer_end_time = datetime.now() + timedelta(minutes=15)
+                            st.session_state.timer_end_time = (datetime.now() + timedelta(minutes=15)).timestamp()
                             st.session_state.timer_subject = sub
                             st.session_state.timer_type = "full"
                             save_to_sheety("timer_active", True)
+                            save_to_sheety("timer_end_time", st.session_state.timer_end_time)
+                            save_to_sheety("timer_subject", sub)
+                            save_to_sheety("timer_type", "full")
                             st.rerun() 
                     with btn_col2:
                         if st.button("⚡ Half (5m)", key=f"half_{sub}", use_container_width=True):
                             st.session_state.timer_active = True
-                            st.session_state.timer_end_time = datetime.now() + timedelta(minutes=5)
+                            st.session_state.timer_end_time = (datetime.now() + timedelta(minutes=5)).timestamp()
                             st.session_state.timer_subject = sub
                             st.session_state.timer_type = "half"
                             save_to_sheety("timer_active", True)
+                            save_to_sheety("timer_end_time", st.session_state.timer_end_time)
+                            save_to_sheety("timer_subject", sub)
+                            save_to_sheety("timer_type", "half")
                             st.rerun()
 
     with col2:
