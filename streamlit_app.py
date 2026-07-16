@@ -76,7 +76,6 @@ if "wash_day_done" not in st.session_state: st.session_state.wash_day_done = Fal
 if "wash_night_done" not in st.session_state: st.session_state.wash_night_done = False
 if "sunblock_done" not in st.session_state: st.session_state.sunblock_done = False
 if "pack_bag_done" not in st.session_state: st.session_state.pack_bag_done = False
-if "habits_last_date" not in st.session_state: st.session_state.habits_last_date = None
 if "bible_chapters" not in st.session_state: st.session_state.bible_chapters = 0
 if "bible_verses" not in st.session_state: st.session_state.bible_verses = 0
 if "bible_days" not in st.session_state: st.session_state.bible_days = 0
@@ -86,17 +85,42 @@ if "timer_end_time" not in st.session_state: st.session_state.timer_end_time = N
 if "timer_subject" not in st.session_state: st.session_state.timer_subject = None
 if "timer_type" not in st.session_state: st.session_state.timer_type = None
 
+today = date.today()
+today_str = str(today)
+
+if "daily_reset_date" not in st.session_state: st.session_state.daily_reset_date = today_str
+
 # LOAD MEMORY ONCE PER REFRESH
 if "memory_loaded" not in st.session_state:
     load_from_sheety()
     st.session_state.memory_loaded = True
 
-today = date.today()
-today_str = str(today)
+# --- True Midnight Resets & Streak Breaks ---
 
-# --- Background Logic Updates ---
+# 1. The Calendar Day Change (Wipes daily progress, leaves lifetime/streaks intact)
+if st.session_state.daily_reset_date != today_str:
+    for sub in SUBJECTS:
+        st.session_state.full_sessions[sub] = 0
+        st.session_state.half_sessions[sub] = 0
+    st.session_state.jp_tasks = {"Duolingo": False, "Jgrammar": False, "Kanji Dojo": False}
+    st.session_state.jp_completed_today = False
+    st.session_state.wash_day_done = False
+    st.session_state.wash_night_done = False
+    st.session_state.sunblock_done = False
+    st.session_state.pack_bag_done = False
+    st.session_state.daily_reset_date = today_str
+    
+    save_to_sheety("full_sessions", st.session_state.full_sessions)
+    save_to_sheety("half_sessions", st.session_state.half_sessions)
+    save_to_sheety("jp_tasks", st.session_state.jp_tasks)
+    save_to_sheety("jp_completed_today", False)
+    save_to_sheety("wash_day_done", False)
+    save_to_sheety("wash_night_done", False)
+    save_to_sheety("sunblock_done", False)
+    save_to_sheety("pack_bag_done", False)
+    save_to_sheety("daily_reset_date", today_str)
 
-# A. Subject Streak Decay
+# 2. Subject Streak Decay (2-day buffer)
 for sub in SUBJECTS:
     last_date_str = st.session_state.last_studied_date[sub]
     if last_date_str and last_date_str != "None":
@@ -104,52 +128,31 @@ for sub in SUBJECTS:
             last_date_obj = datetime.strptime(last_date_str, "%Y-%m-%d").date()
             if (today - last_date_obj).days > 2:  
                 st.session_state.streaks[sub] = 0
-                st.session_state.half_sessions[sub] = 0
-                st.session_state.full_sessions[sub] = 0
                 st.session_state.last_studied_date[sub] = None
                 save_to_sheety("streaks", st.session_state.streaks)
-                save_to_sheety("half_sessions", st.session_state.half_sessions)
-                save_to_sheety("full_sessions", st.session_state.full_sessions)
                 save_to_sheety("last_studied_date", st.session_state.last_studied_date)
         except:
             pass
 
-# B. Japanese Streak Decay
+# 3. Strict Japanese Decay (No Free Days!)
 if st.session_state.jp_last_date and st.session_state.jp_last_date != "None":
     try:
         jp_last_obj = datetime.strptime(st.session_state.jp_last_date, "%Y-%m-%d").date()
-        if (today - jp_last_obj).days > 2:
+        if (today - jp_last_obj).days > 1:
             st.session_state.jp_streak = 0
-            st.session_state.jp_tasks = {"Duolingo": False, "Jgrammar": False, "Kanji Dojo": False}
-            st.session_state.jp_completed_today = False
             st.session_state.jp_last_date = None
             save_to_sheety("jp_streak", st.session_state.jp_streak)
-            save_to_sheety("jp_tasks", st.session_state.jp_tasks)
-            save_to_sheety("jp_completed_today", st.session_state.jp_completed_today)
             save_to_sheety("jp_last_date", st.session_state.jp_last_date)
     except:
         pass
 
-# C. Piano Weekly Reset
+# 4. Piano Weekly Reset
 current_week = today.isocalendar()[1]
 if st.session_state.piano_week != current_week:
     st.session_state.piano_week = current_week
     st.session_state.piano_count = 0 
     save_to_sheety("piano_week", st.session_state.piano_week)
     save_to_sheety("piano_count", st.session_state.piano_count)
-
-# D. Habits Daily Reset
-if st.session_state.habits_last_date != today_str:
-    st.session_state.wash_day_done = False
-    st.session_state.wash_night_done = False
-    st.session_state.sunblock_done = False
-    st.session_state.pack_bag_done = False
-    st.session_state.habits_last_date = today_str
-    save_to_sheety("wash_day_done", False)
-    save_to_sheety("wash_night_done", False)
-    save_to_sheety("sunblock_done", False)
-    save_to_sheety("pack_bag_done", False)
-    save_to_sheety("habits_last_date", today_str)
 
 # --- Active Timer Display Logic ---
 if st.session_state.timer_active:
@@ -185,7 +188,7 @@ if st.session_state.timer_active:
     save_to_sheety("half_sessions", st.session_state.half_sessions)
     save_to_sheety("streaks", st.session_state.streaks)
     save_to_sheety("last_studied_date", st.session_state.last_studied_date)
-    save_to_sheety("timer_active", st.session_state.timer_active)
+    save_to_sheety("timer_active", False)
     st.rerun()
 
 # --- Main UI Menu ---
@@ -211,6 +214,7 @@ if not st.session_state.timer_active:
                             st.session_state.timer_end_time = datetime.now() + timedelta(minutes=15)
                             st.session_state.timer_subject = sub
                             st.session_state.timer_type = "full"
+                            save_to_sheety("timer_active", True)
                             st.rerun() 
                     with btn_col2:
                         if st.button("⚡ Half (5m)", key=f"half_{sub}", use_container_width=True):
@@ -218,6 +222,7 @@ if not st.session_state.timer_active:
                             st.session_state.timer_end_time = datetime.now() + timedelta(minutes=5)
                             st.session_state.timer_subject = sub
                             st.session_state.timer_type = "half"
+                            save_to_sheety("timer_active", True)
                             st.rerun()
 
     with col2:
