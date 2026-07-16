@@ -415,4 +415,4 @@ if not st.session_state.timer_active:
             row_col1, row_col2, row_col3 = st.columns([0.5, 3, 1.5])
             with row_col1:
                 is_done = st.checkbox("Done", value=cw["completed"], key=f"cw_check_{i}", label_visibility="collapsed")
-                if is_done !=
+                if is_done !
