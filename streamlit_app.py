@@ -3,64 +3,36 @@ import streamlit as st
 import time
 from datetime import date, datetime, timedelta
 
-def get_sheet_key():
-    return st.secrets["SHEETY_URL"].rstrip('/').split('/')[-1]
-
 def save_to_sheety(item_name, value):
-    url = st.secrets["SHEETY_URL"]
-    sheet_key = get_sheet_key() 
-    
-    if "sheety_ids" not in st.session_state:
-        st.session_state.sheety_ids = {}
-        
-    row_id = st.session_state.sheety_ids.get(item_name)
+    url = "https://script.google.com/macros/s/AKfycbx2P88HxjO6zhZsDbS99s-EFRBJHavA0yz5XddsrAaBXWufFdsOD3DJvcsOU2xH-mneqA/exec" 
     save_val = str(value) 
-    
-    data = {sheet_key: {"item": item_name, "value": save_val}}
-    
+    data = {"data": {"item": item_name, "value": save_val}}
     try:
-        if row_id:
-            response = requests.put(f"{url}/{row_id}", json=data)
-            if response.status_code != 200:
-                st.error(f"Sheety Error: {response.text}")
-        else:
-            response = requests.post(url, json=data)
-            if response.status_code == 200:
-                json_data = response.json()
-                ret_key = list(json_data.keys())[0]
-                st.session_state.sheety_ids[item_name] = json_data[ret_key].get("id")
-            else:
-                st.error(f"Sheety Error: {response.text}")
-    except Exception as e:
-        st.error(f"Code Error: {e}")
+        requests.post(url, json=data)
+    except:
+        pass
 
 def load_from_sheety():
-    url = st.secrets["SHEETY_URL"]
-    st.session_state.sheety_ids = {} 
-        
+    url = "https://script.google.com/macros/s/AKfycbx2P88HxjO6zhZsDbS99s-EFRBJHavA0yz5XddsrAaBXWufFdsOD3DJvcsOU2xH-mneqA/exec"
     try:
         headers = {"Cache-Control": "no-cache"}
         response = requests.get(url, headers=headers)
-        
         if response.status_code == 200:
             json_data = response.json()
-            if json_data:
-                first_key = list(json_data.keys())[0]
-                data = json_data[first_key]
-                for row in data:
-                    st.session_state.sheety_ids[row["item"]] = row.get("id")
-                    if row["item"] in st.session_state:
-                        val_str = str(row.get("value", ""))
-                        if val_str == "True": val = True
-                        elif val_str == "False": val = False
-                        elif val_str == "None": val = None
-                        elif val_str.isdigit(): val = int(val_str)
-                        elif val_str.startswith("{") or val_str.startswith("["):
-                            try: val = eval(val_str)
-                            except: val = val_str
-                        else:
-                            val = val_str
-                        st.session_state[row["item"]] = val
+            data = json_data.get("sheet1", [])
+            for row in data:
+                if row["item"] in st.session_state:
+                    val_str = str(row.get("value", ""))
+                    if val_str == "True": val = True
+                    elif val_str == "False": val = False
+                    elif val_str == "None": val = None
+                    elif val_str.isdigit(): val = int(val_str)
+                    elif val_str.startswith("{") or val_str.startswith("["):
+                        try: val = eval(val_str)
+                        except: val = val_str
+                    else:
+                        val = val_str
+                    st.session_state[row["item"]] = val
     except:
         pass
 
@@ -443,106 +415,4 @@ if not st.session_state.timer_active:
             row_col1, row_col2, row_col3 = st.columns([0.5, 3, 1.5])
             with row_col1:
                 is_done = st.checkbox("Done", value=cw["completed"], key=f"cw_check_{i}", label_visibility="collapsed")
-                if is_done != cw["completed"]:
-                    st.session_state.courseworks[i]["completed"] = is_done
-                    save_to_sheety("courseworks", st.session_state.courseworks)
-                    st.rerun()
-                    
-            with row_col2:
-                if cw["score"] is not None:
-                    st.write(f"**{cw['subject']}** — Due: {formatted_date} ✅ **{cw['score']}%**")
-                else:
-                    st.write(f"**{cw['subject']}** — Due: {formatted_date}")
-            
-            with row_col3:
-                if cw["completed"] and cw["score"] is None:
-                    with st.popover("✅ Enter Result"):
-                        st.write(f"Enter score for {cw['subject']}")
-                        score_val = st.number_input("Percentage (%)", min_value=0.0, max_value=100.0, step=0.1, key=f"cw_score_input_{i}")
-                        if st.button("Save Result", key=f"save_cw_score_{i}"):
-                            st.session_state.courseworks[i]["score"] = score_val
-                            save_to_sheety("courseworks", st.session_state.courseworks)
-                            st.rerun()
-
-        with st.popover("➕ Add New Coursework"):
-            new_cw_sub = st.text_input("Coursework Subject", placeholder="e.g., Geography Project", key="new_cw_sub")
-            new_cw_date = st.date_input("Due Date", min_value=today, key="new_cw_date")
-            btn1, btn2 = st.columns(2)
-            with btn1:
-                if st.button("Done", key="cw_add_done", use_container_width=True):
-                    if new_cw_sub:
-                        st.session_state.courseworks.append({"subject": new_cw_sub, "due_date": str(new_cw_date), "completed": False, "score": None})
-                        save_to_sheety("courseworks", st.session_state.courseworks)
-                        st.rerun()
-            with btn2:
-                if st.button("Cancel", key="cw_add_cancel", use_container_width=True):
-                    st.rerun()
-
-    # --- Bottom Section 3: HOMEWORK ---
-    st.write("### 🎒 Homework Tracker")
-    with st.container(border=True):
-        if len(st.session_state.homework) == 0:
-            st.caption("No homework! You are completely free.")
-            
-        for i, hw in enumerate(st.session_state.homework):
-            if hw["due_date"] == today_str:
-                date_display = "🔥 **DUE TODAY**"
-            else:
-                try:
-                    date_display = f"Due: {datetime.strptime(hw['due_date'], '%Y-%m-%d').strftime('%d %B %Y')}"
-                except:
-                    date_display = f"Due: {hw['due_date']}"
-                
-            row_col1, row_col2 = st.columns([0.5, 4.5])
-            
-            with row_col1:
-                is_done = st.checkbox("Done", value=hw["completed"], key=f"hw_check_{i}", label_visibility="collapsed")
-                if is_done and not hw["completed"]:
-                    if not hw["keep"]:
-                        st.session_state.homework.pop(i) 
-                        save_to_sheety("homework", st.session_state.homework)
-                        st.rerun()
-                    else:
-                        st.session_state.homework[i]["completed"] = True
-                        save_to_sheety("homework", st.session_state.homework)
-                        st.rerun()
-                elif not is_done and hw["completed"]:
-                    st.session_state.homework[i]["completed"] = False
-                    save_to_sheety("homework", st.session_state.homework)
-                    st.rerun()
-                    
-            with row_col2:
-                if hw["completed"]:
-                    st.write(f"~~**{hw['subject']}**: {hw['task']} — {date_display}~~ ✅")
-                else:
-                    st.write(f"**{hw['subject']}**: {hw['task']} — {date_display}")
-
-        with st.popover("➕ Add New Homework"):
-            hw_sub = st.text_input("Subject", placeholder="e.g., Literature", key="new_hw_sub")
-            hw_task = st.text_area("What do you need to do?", placeholder="e.g., Finish character mindmap", key="new_hw_task")
-            due_today = st.checkbox("🔥 Due Today!", key="hw_due_today")
-            
-            if due_today:
-                hw_date_str = today_str
-            else:
-                hw_date = st.date_input("Due Date", min_value=today, key="new_hw_date")
-                hw_date_str = str(hw_date)
-                
-            hw_keep = st.checkbox("Keep assignment on board after completed", key="hw_keep")
-            
-            btn1, btn2 = st.columns(2)
-            with btn1:
-                if st.button("Done", key="hw_add_done2", use_container_width=True):
-                    if hw_sub and hw_task:
-                        st.session_state.homework.append({
-                            "subject": hw_sub,
-                            "task": hw_task,
-                            "due_date": hw_date_str,
-                            "keep": hw_keep,
-                            "completed": False
-                        })
-                        save_to_sheety("homework", st.session_state.homework)
-                        st.rerun()
-            with btn2:
-                if st.button("Cancel", key="hw_add_cancel2", use_container_width=True):
-                    st.rerun()
+                if is_done !=
