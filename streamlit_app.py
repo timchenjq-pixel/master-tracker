@@ -1,7 +1,7 @@
 import requests
 import streamlit as st
 import time
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 def save_to_sheety(item_name, value):
     url = "https://script.google.com/macros/s/AKfycbx2P88HxjO6zhZsDbS99s-EFRBJHavA0yz5XddsrAaBXWufFdsOD3DJvcsOU2xH-mneqA/exec" 
@@ -87,7 +87,9 @@ if "timer_end_time" not in st.session_state: st.session_state.timer_end_time = 0
 if "timer_subject" not in st.session_state: st.session_state.timer_subject = "None"
 if "timer_type" not in st.session_state: st.session_state.timer_type = "None"
 
-today = date.today()
+# --- SINGAPORE TIMEZONE LOCK ---
+SG_TZ = timezone(timedelta(hours=8))
+today = datetime.now(SG_TZ).date()
 today_str = str(today)
 
 if "daily_reset_date" not in st.session_state: st.session_state.daily_reset_date = today_str
@@ -293,6 +295,18 @@ if not st.session_state.timer_active:
             
             st.write("### 🏋️ Workout")
             st.write(f"**Total Lifetime Days:** {st.session_state.workout_total}")
+            
+            # Formatted Last Workout Date Display
+            if st.session_state.workout_last_date and st.session_state.workout_last_date != "None":
+                try:
+                    last_w_date_obj = datetime.strptime(st.session_state.workout_last_date, "%Y-%m-%d").date()
+                    formatted_last_workout = last_w_date_obj.strftime("%d %B %Y")
+                    st.write(f"**Last Workout:** {formatted_last_workout}")
+                except:
+                    st.write(f"**Last Workout:** {st.session_state.workout_last_date}")
+            else:
+                st.write("**Last Workout:** None yet!")
+            
             workout_done_today = (st.session_state.workout_last_date == today_str)
             
             days_since_workout = 999
