@@ -126,7 +126,7 @@ if st.session_state.daily_reset_date != today_str:
 
 # 2. Subject Streak Decay (2-day buffer)
 for sub in SUBJECTS:
-    last_date_str = st.session_state.last_studied_date[sub]
+    last_date_str = str(st.session_state.last_studied_date[sub])[:10]
     if last_date_str and last_date_str != "None":
         try:
             last_date_obj = datetime.strptime(last_date_str, "%Y-%m-%d").date()
@@ -139,9 +139,10 @@ for sub in SUBJECTS:
             pass
 
 # 3. Strict Japanese Decay (No Free Days!)
-if st.session_state.jp_last_date and st.session_state.jp_last_date != "None":
+if st.session_state.jp_last_date and str(st.session_state.jp_last_date) != "None":
     try:
-        jp_last_obj = datetime.strptime(st.session_state.jp_last_date, "%Y-%m-%d").date()
+        jp_last_str = str(st.session_state.jp_last_date)[:10]
+        jp_last_obj = datetime.strptime(jp_last_str, "%Y-%m-%d").date()
         if (today - jp_last_obj).days > 1:
             st.session_state.jp_streak = 0
             st.session_state.jp_last_date = None
@@ -281,7 +282,7 @@ if not st.session_state.timer_active:
     with col3:
         with st.popover("💪 Activities"):
             st.write("### 🎹 Piano")
-            piano_done_today = (st.session_state.piano_last_date == today_str)
+            piano_done_today = (str(st.session_state.piano_last_date)[:10] == today_str)
             st.write(f"**Weekly Progress:** {st.session_state.piano_count} / 4 days")
             p_tick = st.checkbox("Practice Complete", value=piano_done_today, disabled=piano_done_today)
             if p_tick and not piano_done_today:
@@ -297,9 +298,10 @@ if not st.session_state.timer_active:
             st.write(f"**Total Lifetime Days:** {st.session_state.workout_total}")
             
             # Formatted Last Workout Date Display
-            if st.session_state.workout_last_date and st.session_state.workout_last_date != "None":
+            if st.session_state.workout_last_date and str(st.session_state.workout_last_date) != "None":
                 try:
-                    last_w_date_obj = datetime.strptime(st.session_state.workout_last_date, "%Y-%m-%d").date()
+                    clean_date_str = str(st.session_state.workout_last_date)[:10]
+                    last_w_date_obj = datetime.strptime(clean_date_str, "%Y-%m-%d").date()
                     formatted_last_workout = last_w_date_obj.strftime("%d %B %Y")
                     st.write(f"**Last Workout:** {formatted_last_workout}")
                 except:
@@ -307,12 +309,13 @@ if not st.session_state.timer_active:
             else:
                 st.write("**Last Workout:** None yet!")
             
-            workout_done_today = (st.session_state.workout_last_date == today_str)
+            workout_done_today = (str(st.session_state.workout_last_date)[:10] == today_str)
             
             days_since_workout = 999
-            if st.session_state.workout_last_date and st.session_state.workout_last_date != "None":
+            if st.session_state.workout_last_date and str(st.session_state.workout_last_date) != "None":
                 try:
-                    last_w_date = datetime.strptime(st.session_state.workout_last_date, "%Y-%m-%d").date()
+                    clean_date_str = str(st.session_state.workout_last_date)[:10]
+                    last_w_date = datetime.strptime(clean_date_str, "%Y-%m-%d").date()
                     days_since_workout = (today - last_w_date).days
                 except: pass
             
@@ -371,7 +374,7 @@ if not st.session_state.timer_active:
             
             st.write("### 📖 Bible")
             st.write(f"**Days Read:** {st.session_state.bible_days} | **Ch:** {st.session_state.bible_chapters} | **V:** {st.session_state.bible_verses}")
-            bible_done_today = (st.session_state.bible_last_date == today_str)
+            bible_done_today = (str(st.session_state.bible_last_date)[:10] == today_str)
             
             if not bible_done_today:
                 st.write("What did you read today?")
@@ -407,8 +410,9 @@ if not st.session_state.timer_active:
             
         for i, exam in enumerate(st.session_state.exams):
             try:
-                formatted_date = datetime.strptime(exam["date"], "%Y-%m-%d").strftime("%d %B %Y")
-                exam_date_obj = datetime.strptime(exam["date"], "%Y-%m-%d").date()
+                clean_date_str = str(exam["date"])[:10]
+                formatted_date = datetime.strptime(clean_date_str, "%Y-%m-%d").strftime("%d %B %Y")
+                exam_date_obj = datetime.strptime(clean_date_str, "%Y-%m-%d").date()
             except:
                 formatted_date = str(exam["date"])
                 exam_date_obj = today
@@ -452,7 +456,8 @@ if not st.session_state.timer_active:
             
         for i, cw in enumerate(st.session_state.courseworks):
             try:
-                formatted_date = datetime.strptime(cw["due_date"], "%Y-%m-%d").strftime("%d %B %Y")
+                clean_date_str = str(cw["due_date"])[:10]
+                formatted_date = datetime.strptime(clean_date_str, "%Y-%m-%d").strftime("%d %B %Y")
             except:
                 formatted_date = str(cw["due_date"])
                 
@@ -501,11 +506,12 @@ if not st.session_state.timer_active:
             st.caption("No homework! You are completely free.")
             
         for i, hw in enumerate(st.session_state.homework):
-            if hw["due_date"] == today_str:
+            if str(hw["due_date"])[:10] == today_str:
                 date_display = "🔥 **DUE TODAY**"
             else:
                 try:
-                    date_display = f"Due: {datetime.strptime(hw['due_date'], '%Y-%m-%d').strftime('%d %B %Y')}"
+                    clean_date_str = str(hw["due_date"])[:10]
+                    date_display = f"Due: {datetime.strptime(clean_date_str, '%Y-%m-%d').strftime('%d %B %Y')}"
                 except:
                     date_display = f"Due: {hw['due_date']}"
                 
