@@ -89,20 +89,17 @@ if "timer_type" not in st.session_state: st.session_state.timer_type = "None"
 
 # --- SINGAPORE TIMEZONE LOCK ---
 SG_TZ = timezone(timedelta(hours=8))
-today = datetime.now(SG_TZ).date()
-today_str = str(today)
+now_sg = datetime.now(SG_TZ)
+today_str = str(now_sg.date())
 
 if "daily_reset_date" not in st.session_state: st.session_state.daily_reset_date = today_str
 
-# LOAD MEMORY ONCE PER REFRESH
-if "memory_loaded" not in st.session_state:
-    load_from_sheety()
-    st.session_state.memory_loaded = True
+# LOAD MEMORY
+load_from_sheety()
 
 # --- True Midnight Resets & Streak Breaks ---
-
-# 1. The Calendar Day Change (Wipes daily progress, leaves lifetime/streaks intact)
 if st.session_state.daily_reset_date != today_str:
+    # 1. Reset Daily Progress
     for sub in SUBJECTS:
         st.session_state.full_sessions[sub] = 0
         st.session_state.half_sessions[sub] = 0
@@ -114,6 +111,7 @@ if st.session_state.daily_reset_date != today_str:
     st.session_state.pack_bag_done = False
     st.session_state.daily_reset_date = today_str
     
+    # Save resets immediately
     save_to_sheety("full_sessions", st.session_state.full_sessions)
     save_to_sheety("half_sessions", st.session_state.half_sessions)
     save_to_sheety("jp_tasks", st.session_state.jp_tasks)
@@ -130,7 +128,7 @@ for sub in SUBJECTS:
     if last_date_str and last_date_str != "None":
         try:
             last_date_obj = datetime.strptime(last_date_str, "%Y-%m-%d").date()
-            if (today - last_date_obj).days > 2:  
+            if (now_sg.date() - last_date_obj).days > 2:  
                 st.session_state.streaks[sub] = 0
                 st.session_state.last_studied_date[sub] = None
                 save_to_sheety("streaks", st.session_state.streaks)
@@ -143,7 +141,7 @@ if st.session_state.jp_last_date and str(st.session_state.jp_last_date) != "None
     try:
         jp_last_str = str(st.session_state.jp_last_date)[:10]
         jp_last_obj = datetime.strptime(jp_last_str, "%Y-%m-%d").date()
-        if (today - jp_last_obj).days > 1:
+        if (now_sg.date() - jp_last_obj).days > 1:
             st.session_state.jp_streak = 0
             st.session_state.jp_last_date = None
             save_to_sheety("jp_streak", st.session_state.jp_streak)
@@ -152,7 +150,7 @@ if st.session_state.jp_last_date and str(st.session_state.jp_last_date) != "None
         pass
 
 # 4. Piano Weekly Reset
-current_week = today.isocalendar()[1]
+current_week = now_sg.date().isocalendar()[1]
 if st.session_state.piano_week != current_week:
     st.session_state.piano_week = current_week
     st.session_state.piano_count = 0 
@@ -181,10 +179,8 @@ if st.session_state.timer_active:
                 time.sleep(1)
             timer_display.empty()
         except Exception:
-            # User closed the app or screen went to sleep. Stop safely.
             st.stop()
             
-    # Verify the time is actually up and not just a glitch
     if datetime.now().timestamp() >= end_time_val and end_time_val > 0:
         sub = st.session_state.timer_subject
         t_type = st.session_state.timer_type
@@ -210,7 +206,6 @@ if st.session_state.timer_active:
         save_to_sheety("timer_active", False)
         st.rerun()
     elif time_left > 0:
-        # Prevent the rest of the app from loading if the timer is still somehow active but we hit an exception
         st.stop()
 
 # --- Main UI Menu ---
@@ -316,7 +311,7 @@ if not st.session_state.timer_active:
                 try:
                     clean_date_str = str(st.session_state.workout_last_date)[:10]
                     last_w_date = datetime.strptime(clean_date_str, "%Y-%m-%d").date()
-                    days_since_workout = (today - last_w_date).days
+                    days_since_workout = (now_sg.date() - last_w_date).days
                 except: pass
             
             workout_disabled = workout_done_today or (days_since_workout == 1)
@@ -415,7 +410,7 @@ if not st.session_state.timer_active:
                 exam_date_obj = datetime.strptime(clean_date_str, "%Y-%m-%d").date()
             except:
                 formatted_date = str(exam["date"])
-                exam_date_obj = today
+                exam_date_obj = now_sg.date()
                 
             row_col1, row_col2 = st.columns([3, 1])
             with row_col1:
@@ -425,7 +420,7 @@ if not st.session_state.timer_active:
                     st.write(f"**{exam['subject']}** — {formatted_date}")
             
             with row_col2:
-                if exam["score"] is None and today >= exam_date_obj:
+                if exam["score"] is None and now_sg.date() >= exam_date_obj:
                     with st.popover("✅ Enter Result"):
                         st.write(f"Enter score for {exam['subject']}")
                         score_val = st.number_input("Percentage (%)", min_value=0.0, max_value=100.0, step=0.1, key=f"score_input_{i}")
@@ -436,7 +431,7 @@ if not st.session_state.timer_active:
 
         with st.popover("➕ Add New Exam"):
             new_sub = st.text_input("Exam Subject", placeholder="e.g., Express Math")
-            new_date = st.date_input("Exam Date", min_value=today)
+            new_date = st.date_input("Exam Date", min_value=now_sg.date())
             btn1, btn2 = st.columns(2)
             with btn1:
                 if st.button("Done", key="exam_add_done", use_container_width=True):
@@ -487,7 +482,7 @@ if not st.session_state.timer_active:
 
         with st.popover("➕ Add New Coursework"):
             new_cw_sub = st.text_input("Coursework Subject", placeholder="e.g., Geography Project", key="new_cw_sub")
-            new_cw_date = st.date_input("Due Date", min_value=today, key="new_cw_date")
+            new_cw_date = st.date_input("Due Date", min_value=now_sg.date(), key="new_cw_date")
             btn1, btn2 = st.columns(2)
             with btn1:
                 if st.button("Done", key="cw_add_done", use_container_width=True):
@@ -547,7 +542,7 @@ if not st.session_state.timer_active:
             if due_today:
                 hw_date_str = today_str
             else:
-                hw_date = st.date_input("Due Date", min_value=today, key="new_hw_date")
+                hw_date = st.date_input("Due Date", min_value=now_sg.date(), key="new_hw_date")
                 hw_date_str = str(hw_date)
                 
             hw_keep = st.checkbox("Keep assignment on board after completed", key="hw_keep")
