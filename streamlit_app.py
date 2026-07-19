@@ -1,6 +1,6 @@
 import requests
 import streamlit as st
-import time
+import streamlit.components.v1 as components
 from datetime import date, datetime, timedelta, timezone
 
 def save_to_sheety(item_name, value):
@@ -92,17 +92,14 @@ SG_TZ = timezone(timedelta(hours=8))
 now_sg = datetime.now(SG_TZ)
 today_str = str(now_sg.date())
 
-# Set a fake old date so the app is forced to pull your real reset date from Google!
 if "daily_reset_date" not in st.session_state: st.session_state.daily_reset_date = "1999-01-01"
 
-# LOAD MEMORY ONCE PER REFRESH
+# LOAD MEMORY
 if "memory_loaded" not in st.session_state:
     load_from_sheety()
     st.session_state.memory_loaded = True
 
 # --- True Midnight Resets & Streak Breaks ---
-
-# 1. The Calendar Day Change (Wipes daily progress, leaves lifetime/streaks intact)
 if st.session_state.daily_reset_date != today_str:
     for sub in SUBJECTS:
         st.session_state.full_sessions[sub] = 0
@@ -125,7 +122,6 @@ if st.session_state.daily_reset_date != today_str:
     save_to_sheety("pack_bag_done", False)
     save_to_sheety("daily_reset_date", today_str)
 
-# 2. Subject Streak Decay (2-day buffer)
 for sub in SUBJECTS:
     last_date_str = str(st.session_state.last_studied_date[sub])[:10]
     if last_date_str and last_date_str != "None":
@@ -139,7 +135,6 @@ for sub in SUBJECTS:
         except:
             pass
 
-# 3. Strict Japanese Decay (No Free Days!)
 if st.session_state.jp_last_date and str(st.session_state.jp_last_date) != "None":
     try:
         jp_last_str = str(st.session_state.jp_last_date)[:10]
@@ -152,7 +147,6 @@ if st.session_state.jp_last_date and str(st.session_state.jp_last_date) != "None
     except:
         pass
 
-# 4. Piano Weekly Reset
 current_week = now_sg.date().isocalendar()[1]
 if st.session_state.piano_week != current_week:
     st.session_state.piano_week = current_week
@@ -170,19 +164,36 @@ if st.session_state.timer_active:
     time_left = end_time_val - datetime.now().timestamp()
     
     if time_left > 0:
-        timer_display = st.empty()
-        try:
-            for i in range(int(time_left), -1, -1):
-                mins, secs = divmod(i, 60)
-                timer_display.markdown(
-                    f"<h1 style='text-align: center; font-size: 80px; margin-top: 20vh;'>⏱️ {mins:02d}:{secs:02d}</h1>"
-                    f"<h3 style='text-align: center; color: gray;'>Focusing on {st.session_state.timer_subject}...</h3>", 
-                    unsafe_allow_html=True
-                )
-                time.sleep(1)
-            timer_display.empty()
-        except Exception:
-            st.stop()
+        st.markdown(f"<h3 style='text-align: center; color: gray;'>Focusing on {st.session_state.timer_subject}...</h3>", unsafe_allow_html=True)
+        
+        html_code = f"""
+        <div style="text-align: center; font-family: sans-serif;">
+            <h1 id="clock" style="font-size: 80px; margin-top: 5vh; margin-bottom: 5vh;">⏱️ --:--</h1>
+        </div>
+        <script>
+            var countDownDate = {end_time_val} * 1000;
+            var x = setInterval(function() {{
+                var now = new Date().getTime();
+                var distance = countDownDate - now;
+                if (distance <= 0) {{
+                    clearInterval(x);
+                    document.getElementById("clock").innerHTML = "⏱️ 00:00";
+                }} else {{
+                    var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                    var m = minutes < 10 ? "0" + minutes : minutes;
+                    var s = seconds < 10 ? "0" + seconds : seconds;
+                    document.getElementById("clock").innerHTML = "⏱️ " + m + ":" + s;
+                }}
+            }}, 1000);
+        </script>
+        """
+        components.html(html_code, height=200)
+        
+        if st.button("✅ Claim Session (Click when time is up)", use_container_width=True):
+            st.rerun()
+            
+        st.stop()
             
     if datetime.now().timestamp() >= end_time_val and end_time_val > 0:
         sub = st.session_state.timer_subject
