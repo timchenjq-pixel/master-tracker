@@ -92,14 +92,18 @@ SG_TZ = timezone(timedelta(hours=8))
 now_sg = datetime.now(SG_TZ)
 today_str = str(now_sg.date())
 
-if "daily_reset_date" not in st.session_state: st.session_state.daily_reset_date = today_str
+# Set a fake old date so the app is forced to pull your real reset date from Google!
+if "daily_reset_date" not in st.session_state: st.session_state.daily_reset_date = "1999-01-01"
 
-# LOAD MEMORY
-load_from_sheety()
+# LOAD MEMORY ONCE PER REFRESH
+if "memory_loaded" not in st.session_state:
+    load_from_sheety()
+    st.session_state.memory_loaded = True
 
 # --- True Midnight Resets & Streak Breaks ---
+
+# 1. The Calendar Day Change (Wipes daily progress, leaves lifetime/streaks intact)
 if st.session_state.daily_reset_date != today_str:
-    # 1. Reset Daily Progress
     for sub in SUBJECTS:
         st.session_state.full_sessions[sub] = 0
         st.session_state.half_sessions[sub] = 0
@@ -111,7 +115,6 @@ if st.session_state.daily_reset_date != today_str:
     st.session_state.pack_bag_done = False
     st.session_state.daily_reset_date = today_str
     
-    # Save resets immediately
     save_to_sheety("full_sessions", st.session_state.full_sessions)
     save_to_sheety("half_sessions", st.session_state.half_sessions)
     save_to_sheety("jp_tasks", st.session_state.jp_tasks)
@@ -292,7 +295,6 @@ if not st.session_state.timer_active:
             st.write("### 🏋️ Workout")
             st.write(f"**Total Lifetime Days:** {st.session_state.workout_total}")
             
-            # Formatted Last Workout Date Display
             if st.session_state.workout_last_date and str(st.session_state.workout_last_date) != "None":
                 try:
                     clean_date_str = str(st.session_state.workout_last_date)[:10]
