@@ -184,11 +184,13 @@ if not st.session_state.timer_active:
             for sub in SUBJECTS:
                 has_completed_today = (st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)
                 status_emoji = "✅" if has_completed_today else "⏳"
-                streak_val = st.session_state.streaks[sub]
+                streak_val = st.session_state.streaks.get(sub, 0)
                 
                 with st.expander(f"{status_emoji} {sub} (Streak: {streak_val}d)"):
-                    st.checkbox("Completed for today", value=has_completed_today, disabled=True, key=f"status_{sub}")
-                    st.write(f"Progress: Full ({st.session_state.full_sessions[sub]}/1) | Half ({st.session_state.half_sessions[sub]}/2)")
+                    if has_completed_today:
+                        st.success("✅ Completed for today")
+                    else:
+                        st.write(f"Progress: Full ({st.session_state.full_sessions[sub]}/1) | Half ({st.session_state.half_sessions[sub]}/2)")
                     
                     btn_col1, btn_col2 = st.columns(2)
                     with btn_col1:
@@ -218,40 +220,42 @@ if not st.session_state.timer_active:
         jp_label = "✅ Japanese (Done)" if st.session_state.jp_completed_today else "🎌 Japanese"
         with st.popover(jp_label):
             st.write(f"**Current Streak: {st.session_state.jp_streak} days**")
-            duo = st.checkbox("Duolingo", value=st.session_state.jp_tasks.get("Duolingo", False), disabled=st.session_state.jp_completed_today)
-            jgram = st.checkbox("Jgrammar", value=st.session_state.jp_tasks.get("Jgrammar", False), disabled=st.session_state.jp_completed_today)
-            kanji = st.checkbox("Kanji Dojo", value=st.session_state.jp_tasks.get("Kanji Dojo", False), disabled=st.session_state.jp_completed_today)
-
-            if not st.session_state.jp_completed_today:
-                if duo and jgram and kanji:
-                    st.session_state.jp_completed_today = True
-                    st.session_state.jp_streak += 1
-                    st.session_state.jp_last_date = today_str
-                    st.session_state.jp_tasks = {"Duolingo": True, "Jgrammar": True, "Kanji Dojo": True}
-                    save_to_sheety("jp_completed_today", True)
-                    save_to_sheety("jp_streak", st.session_state.jp_streak)
-                    save_to_sheety("jp_last_date", today_str)
-                    save_to_sheety("jp_tasks", st.session_state.jp_tasks)
-                    st.rerun() 
+            
+            # Irreversible Checkboxes for Japanese
+            for task in ["Duolingo", "Jgrammar", "Kanji Dojo"]:
+                if st.session_state.jp_tasks.get(task, False):
+                    st.success(f"✅ {task} (Done)")
                 else:
-                    new_tasks = {"Duolingo": duo, "Jgrammar": jgram, "Kanji Dojo": kanji}
-                    if st.session_state.jp_tasks != new_tasks:
-                        st.session_state.jp_tasks = new_tasks
-                        save_to_sheety("jp_tasks", new_tasks)
+                    if st.checkbox(task, key=f"jp_task_{task}"):
+                        st.session_state.jp_tasks[task] = True
+                        save_to_sheety("jp_tasks", st.session_state.jp_tasks)
                         st.rerun()
+
+            # Auto-complete checker
+            if all(st.session_state.jp_tasks.values()) and not st.session_state.jp_completed_today:
+                st.session_state.jp_completed_today = True
+                st.session_state.jp_streak += 1
+                st.session_state.jp_last_date = today_str
+                save_to_sheety("jp_completed_today", True)
+                save_to_sheety("jp_streak", st.session_state.jp_streak)
+                save_to_sheety("jp_last_date", today_str)
+                st.rerun()
 
     with col3:
         with st.popover("💪 Activities"):
             st.write("### 🎹 Piano")
             piano_done_today = (str(st.session_state.piano_last_date)[:10] == today_str)
             st.write(f"**Weekly Progress:** {st.session_state.piano_count} / 4 days")
-            p_tick = st.checkbox("Practice Complete", value=piano_done_today, disabled=piano_done_today)
-            if p_tick and not piano_done_today:
-                st.session_state.piano_count += 1
-                st.session_state.piano_last_date = today_str
-                save_to_sheety("piano_count", st.session_state.piano_count)
-                save_to_sheety("piano_last_date", today_str)
-                st.rerun()
+            
+            if piano_done_today:
+                st.success("✅ Practice Complete (Done)")
+            else:
+                if st.checkbox("Practice Complete", key="p_tick_lock"):
+                    st.session_state.piano_count += 1
+                    st.session_state.piano_last_date = today_str
+                    save_to_sheety("piano_count", st.session_state.piano_count)
+                    save_to_sheety("piano_last_date", today_str)
+                    st.rerun()
                 
             st.divider()
             
@@ -279,17 +283,18 @@ if not st.session_state.timer_active:
                     days_since_workout = (now_sg.date() - last_w_date).days
                 except: pass
             
-            workout_disabled = workout_done_today or (days_since_workout == 1)
-            if days_since_workout == 1 and not workout_done_today:
+            if workout_done_today:
+                st.success("✅ Workout Complete (Done)")
+            elif days_since_workout == 1:
                 st.caption("⏳ Rest Day! Checkbox will unlock tomorrow.")
-                
-            w_tick = st.checkbox("Workout Complete", value=workout_done_today, disabled=workout_disabled)
-            if w_tick and not workout_done_today:
-                st.session_state.workout_total += 1
-                st.session_state.workout_last_date = today_str
-                save_to_sheety("workout_total", st.session_state.workout_total)
-                save_to_sheety("workout_last_date", today_str)
-                st.rerun()
+                st.checkbox("Workout Complete", disabled=True, key="w_tick_disabled")
+            else:
+                if st.checkbox("Workout Complete", key="w_tick_lock"):
+                    st.session_state.workout_total += 1
+                    st.session_state.workout_last_date = today_str
+                    save_to_sheety("workout_total", st.session_state.workout_total)
+                    save_to_sheety("workout_last_date", today_str)
+                    st.rerun()
 
     with col4:
         with st.popover("🌅 Routines"):
@@ -297,38 +302,46 @@ if not st.session_state.timer_active:
             st.write(f"**Total Washes:** {st.session_state.wash_total}")
             st.write(f"**Sunblock Days:** {st.session_state.sunblock_total}")
             
-            w_day = st.checkbox("Morning Wash", value=st.session_state.wash_day_done, disabled=st.session_state.wash_day_done)
-            if w_day and not st.session_state.wash_day_done:
-                st.session_state.wash_total += 1
-                st.session_state.wash_day_done = True
-                save_to_sheety("wash_total", st.session_state.wash_total)
-                save_to_sheety("wash_day_done", True)
-                st.rerun()
+            if st.session_state.wash_day_done:
+                st.success("✅ Morning Wash (Done)")
+            else:
+                if st.checkbox("Morning Wash", key="w_day_lock"):
+                    st.session_state.wash_total += 1
+                    st.session_state.wash_day_done = True
+                    save_to_sheety("wash_total", st.session_state.wash_total)
+                    save_to_sheety("wash_day_done", True)
+                    st.rerun()
                 
-            w_night = st.checkbox("Night Wash", value=st.session_state.wash_night_done, disabled=st.session_state.wash_night_done)
-            if w_night and not st.session_state.wash_night_done:
-                st.session_state.wash_total += 1
-                st.session_state.wash_night_done = True
-                save_to_sheety("wash_total", st.session_state.wash_total)
-                save_to_sheety("wash_night_done", True)
-                st.rerun()
+            if st.session_state.wash_night_done:
+                st.success("✅ Night Wash (Done)")
+            else:
+                if st.checkbox("Night Wash", key="w_night_lock"):
+                    st.session_state.wash_total += 1
+                    st.session_state.wash_night_done = True
+                    save_to_sheety("wash_total", st.session_state.wash_total)
+                    save_to_sheety("wash_night_done", True)
+                    st.rerun()
                 
-            s_block = st.checkbox("Put Sunblock Today", value=st.session_state.sunblock_done, disabled=st.session_state.sunblock_done)
-            if s_block and not st.session_state.sunblock_done:
-                st.session_state.sunblock_total += 1
-                st.session_state.sunblock_done = True
-                save_to_sheety("sunblock_total", st.session_state.sunblock_total)
-                save_to_sheety("sunblock_done", True)
-                st.rerun()
+            if st.session_state.sunblock_done:
+                st.success("✅ Put Sunblock (Done)")
+            else:
+                if st.checkbox("Put Sunblock Today", key="s_block_lock"):
+                    st.session_state.sunblock_total += 1
+                    st.session_state.sunblock_done = True
+                    save_to_sheety("sunblock_total", st.session_state.sunblock_total)
+                    save_to_sheety("sunblock_done", True)
+                    st.rerun()
                 
             st.divider()
             
             st.write("### 🎒 Pack Bag")
-            p_bag = st.checkbox("Bag Packed", value=st.session_state.pack_bag_done, disabled=st.session_state.pack_bag_done)
-            if p_bag and not st.session_state.pack_bag_done:
-                st.session_state.pack_bag_done = True
-                save_to_sheety("pack_bag_done", True)
-                st.rerun()
+            if st.session_state.pack_bag_done:
+                st.success("✅ Bag Packed (Done)")
+            else:
+                if st.checkbox("Bag Packed", key="p_bag_lock"):
+                    st.session_state.pack_bag_done = True
+                    save_to_sheety("pack_bag_done", True)
+                    st.rerun()
                 
             st.divider()
             
@@ -377,7 +390,7 @@ if not st.session_state.timer_active:
                 formatted_date = str(exam["date"])
                 exam_date_obj = now_sg.date()
                 
-            row_col1, row_col2 = st.columns([3, 1])
+            row_col1, row_col2, row_col3 = st.columns([3, 1, 0.5])
             with row_col1:
                 if exam["score"] is not None:
                     st.write(f"**{exam['subject']}** — {formatted_date} ✅ **{exam['score']}%**")
@@ -393,6 +406,11 @@ if not st.session_state.timer_active:
                             st.session_state.exams[i]["score"] = score_val
                             save_to_sheety("exams", st.session_state.exams)
                             st.rerun()
+            with row_col3:
+                if st.button("❌", key=f"del_exam_{i}"):
+                    st.session_state.exams.pop(i)
+                    save_to_sheety("exams", st.session_state.exams)
+                    st.rerun()
 
         with st.popover("➕ Add New Exam"):
             new_sub = st.text_input("Exam Subject", placeholder="e.g., Express Math")
@@ -421,7 +439,7 @@ if not st.session_state.timer_active:
             except:
                 formatted_date = str(cw["due_date"])
                 
-            row_col1, row_col2, row_col3 = st.columns([0.5, 3, 1.5])
+            row_col1, row_col2, row_col3, row_col4 = st.columns([0.5, 3, 1.5, 0.5])
             with row_col1:
                 is_done = st.checkbox("Done", value=cw["completed"], key=f"cw_check_{i}", label_visibility="collapsed")
                 if is_done != cw["completed"]:
@@ -444,6 +462,11 @@ if not st.session_state.timer_active:
                             st.session_state.courseworks[i]["score"] = score_val
                             save_to_sheety("courseworks", st.session_state.courseworks)
                             st.rerun()
+            with row_col4:
+                if st.button("❌", key=f"del_cw_{i}"):
+                    st.session_state.courseworks.pop(i)
+                    save_to_sheety("courseworks", st.session_state.courseworks)
+                    st.rerun()
 
         with st.popover("➕ Add New Coursework"):
             new_cw_sub = st.text_input("Coursework Subject", placeholder="e.g., Geography Project", key="new_cw_sub")
@@ -475,7 +498,7 @@ if not st.session_state.timer_active:
                 except:
                     date_display = f"Due: {hw['due_date']}"
                 
-            row_col1, row_col2 = st.columns([0.5, 4.5])
+            row_col1, row_col2, row_col3 = st.columns([0.5, 4, 0.5])
             
             with row_col1:
                 is_done = st.checkbox("Done", value=hw["completed"], key=f"hw_check_{i}", label_visibility="collapsed")
@@ -498,6 +521,12 @@ if not st.session_state.timer_active:
                     st.write(f"~~**{hw['subject']}**: {hw['task']} — {date_display}~~ ✅")
                 else:
                     st.write(f"**{hw['subject']}**: {hw['task']} — {date_display}")
+                    
+            with row_col3:
+                if st.button("❌", key=f"del_hw_{i}"):
+                    st.session_state.homework.pop(i)
+                    save_to_sheety("homework", st.session_state.homework)
+                    st.rerun()
 
         with st.popover("➕ Add New Homework"):
             hw_sub = st.text_input("Subject", placeholder="e.g., Literature", key="new_hw_sub")
@@ -528,3 +557,30 @@ if not st.session_state.timer_active:
             with btn2:
                 if st.button("Cancel", key="hw_add_cancel2", use_container_width=True):
                     st.rerun()
+
+    # --- ADMIN SETTINGS ---
+    st.write("---")
+    with st.expander("⚙️ Admin Settings"):
+        st.write("Use this to clear the cache and set your exact current progress.")
+        if st.button("⚠️ Wipe Cache & Set Current Progress"):
+            with st.spinner("Overwriting Google Sheets..."):
+                st.session_state.wash_total = 4
+                st.session_state.jp_streak = 2
+                st.session_state.workout_total = 2
+                for sub in SUBJECTS:
+                    st.session_state.streaks[sub] = 3 if sub in ["Math", "Life Science"] else 0
+                st.session_state.bible_chapters = 1
+                
+                st.session_state.exams = []
+                st.session_state.courseworks = []
+                st.session_state.homework = []
+                
+                save_to_sheety("wash_total", 4)
+                save_to_sheety("jp_streak", 2)
+                save_to_sheety("workout_total", 2)
+                save_to_sheety("streaks", st.session_state.streaks)
+                save_to_sheety("bible_chapters", 1)
+                save_to_sheety("exams", [])
+                save_to_sheety("courseworks", [])
+                save_to_sheety("homework", [])
+            st.rerun()
