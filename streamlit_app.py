@@ -59,7 +59,7 @@ for key in ["streaks", "half_sessions", "full_sessions"]:
 
 if "last_studied_date" not in st.session_state: st.session_state.last_studied_date = {sub: None for sub in SUBJECTS}
 if "jp_streak" not in st.session_state: st.session_state.jp_streak = 0
-if "jp_tasks" not in st.session_state: st.session_state.jp_tasks = {"Duolingo": False, "Jgrammar": False, "Kanji Dojo": False}
+if "jp_tasks" not in st.session_state: st.session_state.jp_tasks = {"Duolingo": False, "Jgrammar": False, "Kanji and vocab": False}
 if "jp_completed_today" not in st.session_state: st.session_state.jp_completed_today = False
 if "jp_last_date" not in st.session_state: st.session_state.jp_last_date = None
 if "piano_count" not in st.session_state: st.session_state.piano_count = 0
@@ -101,7 +101,7 @@ if st.button("🌅 Start New Day (Manual Reset)"):
         for sub in SUBJECTS:
             st.session_state.full_sessions[sub] = 0
             st.session_state.half_sessions[sub] = 0
-        st.session_state.jp_tasks = {"Duolingo": False, "Jgrammar": False, "Kanji Dojo": False}
+        st.session_state.jp_tasks = {"Duolingo": False, "Jgrammar": False, "Kanji and vocab": False}
         st.session_state.jp_completed_today = False
         st.session_state.wash_day_done = False
         st.session_state.wash_night_done = False
@@ -160,16 +160,20 @@ if st.session_state.timer_active:
         sub = st.session_state.timer_subject
         t_type = st.session_state.timer_type
         if sub in SUBJECTS:
-            has_completed_today = (st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)
+            has_completed_today = (st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 1)
             if t_type == "full": st.session_state.full_sessions[sub] += 1
             else: st.session_state.half_sessions[sub] += 1
-            if not has_completed_today and ((st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)):
+            
+            # Re-check completion after adding the session
+            if not has_completed_today and ((st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 1)):
                 st.session_state.streaks[sub] += 1
                 st.session_state.last_studied_date[sub] = today_str
+                
             save_to_sheety("full_sessions", st.session_state.full_sessions)
             save_to_sheety("half_sessions", st.session_state.half_sessions)
             save_to_sheety("streaks", st.session_state.streaks)
             save_to_sheety("last_studied_date", st.session_state.last_studied_date)
+            
         st.session_state.timer_active = False
         save_to_sheety("timer_active", False)
         st.rerun()
@@ -182,7 +186,7 @@ if not st.session_state.timer_active:
     with col1:
         with st.popover("📚 Tracker"):
             for sub in SUBJECTS:
-                has_completed_today = (st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 2)
+                has_completed_today = (st.session_state.full_sessions[sub] >= 1) or (st.session_state.half_sessions[sub] >= 1)
                 status_emoji = "✅" if has_completed_today else "⏳"
                 streak_val = st.session_state.streaks.get(sub, 0)
                 
@@ -190,7 +194,7 @@ if not st.session_state.timer_active:
                     if has_completed_today:
                         st.success("✅ Completed for today")
                     else:
-                        st.write(f"Progress: Full ({st.session_state.full_sessions[sub]}/1) | Half ({st.session_state.half_sessions[sub]}/2)")
+                        st.write(f"Progress: Full ({st.session_state.full_sessions[sub]}/1) | Half ({st.session_state.half_sessions[sub]}/1)")
                     
                     btn_col1, btn_col2 = st.columns(2)
                     with btn_col1:
@@ -221,8 +225,7 @@ if not st.session_state.timer_active:
         with st.popover(jp_label):
             st.write(f"**Current Streak: {st.session_state.jp_streak} days**")
             
-            # Irreversible Checkboxes for Japanese
-            for task in ["Duolingo", "Jgrammar", "Kanji Dojo"]:
+            for task in ["Duolingo", "Jgrammar", "Kanji and vocab"]:
                 if st.session_state.jp_tasks.get(task, False):
                     st.success(f"✅ {task} (Done)")
                 else:
@@ -231,7 +234,6 @@ if not st.session_state.timer_active:
                         save_to_sheety("jp_tasks", st.session_state.jp_tasks)
                         st.rerun()
 
-            # Auto-complete checker
             if all(st.session_state.jp_tasks.values()) and not st.session_state.jp_completed_today:
                 st.session_state.jp_completed_today = True
                 st.session_state.jp_streak += 1
@@ -560,27 +562,52 @@ if not st.session_state.timer_active:
 
     # --- ADMIN SETTINGS ---
     st.write("---")
-    with st.expander("⚙️ Admin Settings"):
-        st.write("Use this to clear the cache and set your exact current progress.")
-        if st.button("⚠️ Wipe Cache & Set Current Progress"):
-            with st.spinner("Overwriting Google Sheets..."):
-                st.session_state.wash_total = 4
-                st.session_state.jp_streak = 2
-                st.session_state.workout_total = 2
-                for sub in SUBJECTS:
-                    st.session_state.streaks[sub] = 3 if sub in ["Math", "Life Science"] else 0
-                st.session_state.bible_chapters = 1
+    with st.expander("⚙️ Admin Settings (Manual Stat Editor)"):
+        st.write("Fix any messed up stats here. Enter the correct numbers and hit save.")
+        
+        col_admin1, col_admin2 = st.columns(2)
+        with col_admin1:
+            new_wash = st.number_input("Total Washes", value=int(st.session_state.wash_total), min_value=0, step=1)
+            new_sun = st.number_input("Sunblock Days", value=int(st.session_state.sunblock_total), min_value=0, step=1)
+            new_jp = st.number_input("Japanese Streak", value=int(st.session_state.jp_streak), min_value=0, step=1)
+            new_work = st.number_input("Workout Total", value=int(st.session_state.workout_total), min_value=0, step=1)
+            new_piano = st.number_input("Piano Weekly Count", value=int(st.session_state.piano_count), min_value=0, step=1)
+        
+        with col_admin2:
+            new_b_chap = st.number_input("Bible Chapters", value=int(st.session_state.bible_chapters), min_value=0, step=1)
+            new_b_verse = st.number_input("Bible Verses", value=int(st.session_state.bible_verses), min_value=0, step=1)
+            new_b_days = st.number_input("Bible Days Read", value=int(st.session_state.bible_days), min_value=0, step=1)
+        
+        st.write("### Subject Streaks")
+        new_streaks = {}
+        sub_col1, sub_col2 = st.columns(2)
+        for idx, sub in enumerate(SUBJECTS):
+            if idx % 2 == 0:
+                with sub_col1:
+                    new_streaks[sub] = st.number_input(f"{sub} Streak", value=int(st.session_state.streaks.get(sub, 0)), min_value=0, step=1, key=f"admin_str_{sub}")
+            else:
+                with sub_col2:
+                    new_streaks[sub] = st.number_input(f"{sub} Streak", value=int(st.session_state.streaks.get(sub, 0)), min_value=0, step=1, key=f"admin_str_{sub}")
+            
+        if st.button("💾 Save All Adjustments", use_container_width=True):
+            with st.spinner("Saving new stats to Google..."):
+                st.session_state.wash_total = new_wash
+                st.session_state.sunblock_total = new_sun
+                st.session_state.jp_streak = new_jp
+                st.session_state.workout_total = new_work
+                st.session_state.piano_count = new_piano
+                st.session_state.bible_chapters = new_b_chap
+                st.session_state.bible_verses = new_b_verse
+                st.session_state.bible_days = new_b_days
+                st.session_state.streaks = new_streaks
                 
-                st.session_state.exams = []
-                st.session_state.courseworks = []
-                st.session_state.homework = []
-                
-                save_to_sheety("wash_total", 4)
-                save_to_sheety("jp_streak", 2)
-                save_to_sheety("workout_total", 2)
+                save_to_sheety("wash_total", new_wash)
+                save_to_sheety("sunblock_total", new_sun)
+                save_to_sheety("jp_streak", new_jp)
+                save_to_sheety("workout_total", new_work)
+                save_to_sheety("piano_count", new_piano)
+                save_to_sheety("bible_chapters", new_b_chap)
+                save_to_sheety("bible_verses", new_b_verse)
+                save_to_sheety("bible_days", new_b_days)
                 save_to_sheety("streaks", st.session_state.streaks)
-                save_to_sheety("bible_chapters", 1)
-                save_to_sheety("exams", [])
-                save_to_sheety("courseworks", [])
-                save_to_sheety("homework", [])
             st.rerun()
